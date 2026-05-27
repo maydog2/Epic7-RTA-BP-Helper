@@ -1,0 +1,91 @@
+# E7 BP Helper — GitHub 仓库用途：
+#   Vercel 部署 frontend/（静态站）
+#   Render 部署 Flask API + TensorFlow（render.yaml）
+# 不上传：本地 venv、exe 打包、爬虫/训练、个人笔记
+
+# --- Python / local env ---
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# --- IDE / OS ---
+.idea/
+.vscode/
+.cursor/
+*.swp
+*.swo
+Thumbs.db
+Desktop.ini
+
+# --- Runtime logs / local state ---
+*.log
+recommender_service_port.txt
+dist_exe_out.log
+
+# --- Frontend（Vercel 在云端 npm build，不提交构建产物）---
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# --- Windows exe 打包（本地分发用，与 Vercel/Render 无关）---
+build/
+dist/
+*.spec
+build_exe.ps1
+launcher.py
+requirements-packaging.txt
+
+# --- 个人笔记 / 本地草稿 ---
+近期计划.txt
+小本本.md
+README_SCRAPERS.md
+
+# --- 爬虫 / 训练依赖（Render 用 requirements-recommender.txt）---
+requirements-scraping.txt
+
+# --- data: 只保留线上推理所需 ---
+data/debug/
+data/*.html
+data/*.jsonl
+data/epic7_scraper_state.json
+data/*_appearances.txt
+data/debug_*.json
+data/order4_reco.txt
+data/o8_norerank.txt
+
+# 保留: hero_details.csv, reranker/*.csv, runtime/*.pkl
+# Transformer: 只保留推理文件（Render 加载 .weights.h5）
+data/transformer/*
+!data/transformer/
+!data/transformer/rec_model_position_warfare.weights.h5
+!data/transformer/rec_variables.pkl
+!data/transformer/training_report_position_warfare.json
+
+# --- workflow_scripts: 只保留后端 import 的 4 个模块 ---
+workflow_scripts/*
+!workflow_scripts/
+!workflow_scripts/transformer_draft_data.py
+!workflow_scripts/transformer_draft_model.py
+!workflow_scripts/match_history_utils.py
+!workflow_scripts/build_runtime_artifacts.py
+
+# 以下应被上一段 workflow_scripts/* 覆盖；单独列出便于阅读
+workflow_scripts/get_*.py
+workflow_scripts/generate_*.py
+workflow_scripts/build_transformer_draft_dataset.py
+workflow_scripts/evaluate_draft_models.py
+workflow_scripts/update_hero_details_appearance_stats.py
+workflow_scripts/hero_details_*.py
+workflow_scripts/dump_hero_appearances.py
+workflow_scripts/debug_reco_once.py
+workflow_scripts/test_*.py
+workflow_scripts/*.ps1
+workflow_scripts/tf_requirements.txt

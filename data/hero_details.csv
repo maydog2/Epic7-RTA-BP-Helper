@@ -1,0 +1,380 @@
+Hero,name,name_zh,Role,Element,appearance_count
+c0002,Mercedes,玫勒赛德丝,mage,fire,0
+c1001,Ras,拉斯,knight,fire,0
+c1002,Cecilia,赛西莉亚,knight,fire,0
+c1003,Rose,萝季,knight,ice,0
+c1004,Silk,席可,ranger,earth,0
+c1006,Kise,绮世,assassin,ice,0
+c1007,Vildred,维德瑞,assassin,earth,311
+c1008,Armin,亚敏,knight,earth,1
+c1009,Charlotte,夏绿蒂,knight,fire,11
+c1010,Zerato,杰拉图,mage,ice,0
+c1011,Karin,卡琳,assassin,ice,0
+c1012,Corvus,科尔布思,warrior,fire,0
+c1013,Cartuja,卡尔图哈,warrior,earth,0
+c1014,Cidd,席德,assassin,earth,8
+c1015,Baal & Sezan,巴尔&塞尚,mage,fire,0
+c1016,Yufine,优芬妮,warrior,earth,1
+c1017,Achates,雅卡泰丝,manauser,fire,0
+c1018,Aither,埃德勒,manauser,ice,0
+c1019,Ravi,萝菲,warrior,fire,2
+c1020,Schuri,修里,ranger,fire,96
+c1021,Dingo,汀果,warrior,fire,0
+c1022,Ruele of Light,光之瑞儿,manauser,light,2358
+c1023,Kayron,凯隆,assassin,fire,4
+c1024,Iseria,伊赛丽亚,ranger,earth,0
+c1027,Charles,查尔斯,knight,earth,0
+c1028,Clarissa,克莱莉莎,warrior,ice,0
+c1029,Leo,雷欧,ranger,earth,0
+c1030,Yuna,尤娜,ranger,ice,0
+c1031,Lots,拉兹,manauser,earth,0
+c1032,Maya,玛雅,knight,fire,0
+c1033,Coli,可丽,assassin,ice,0
+c1034,Straze,史瑞杰思,warrior,dark,363
+c1035,Purrgis,法济斯,warrior,earth,0
+c1036,Crozet,克罗泽,knight,ice,0
+c1037,Dominiel,多米妮尔,mage,ice,0
+c1038,Sez,赛兹,assassin,ice,18
+c1039,Haste,海斯特,assassin,fire,0
+c1040,Serila,塞丽拉,mage,fire,0
+c1042,Tywin,泰温,knight,ice,0
+c1043,Romann,洛曼,mage,ice,0
+c1044,Mui,缪伊,warrior,earth,0
+c1046,Lidica,丽迪卡,ranger,fire,941
+c1047,Ken,肯恩,warrior,fire,0
+c1048,Aramintha,雅拉敏塔,mage,fire,0
+c1049,Chloe,克萝爱,warrior,ice,0
+c1050,Tenebria,泰妮布里雅,mage,fire,0
+c1053,Basar,巴萨尔,mage,earth,0
+c1054,Rin,铃儿,manauser,earth,0
+c1055,Jenua,济纽亚,assassin,fire,25
+c1060,Schniel,修尼尔,manauser,earth,41
+c1062,Angelica,安洁莉卡,manauser,ice,0
+c1065,Surin,苏琳,assassin,fire,23
+c1066,Luna,露娜,warrior,ice,0
+c1067,Tamarinne,塔玛林尔,manauser,fire,0
+c1069,Ludwig,鲁特比,mage,earth,0
+c1070,Krau,克劳乌,knight,ice,3
+c1071,Bellona,维尔萝娜,ranger,earth,0
+c1072,Sigret,赛珂兰特,warrior,ice,0
+c1073,Kawerik,卡威利,mage,fire,2
+c1074,Violet,菲奥雷托,assassin,earth,4
+c1076,Diene,迪埃妮,manauser,ice,67
+c1079,Cermia,洁若米亚,warrior,fire,0
+c1080,Pavel,帕贝尔,ranger,earth,0
+c1081,Cerise,赛瑞丝,ranger,ice,0
+c1082,Luluca,璐璐卡,mage,ice,0
+c1083,Zeno,杰诺,mage,ice,75
+c1085,Khawazu,卡瓦朱,warrior,fire,0
+c1086,Khawana,卡瓦娜,assassin,fire,0
+c1087,Furious,尤贝乌斯,ranger,ice,0
+c1088,Vivian,薇薇安,mage,earth,0
+c1089,Lilias,莉莉亚斯,knight,fire,2
+c1090,Ray,雷伊,manauser,earth,0
+c1091,Elena,艾蕾娜,manauser,ice,293
+c1092,Sol,索尔,warrior,fire,1
+c1093,Baiken,梅喧,assassin,earth,0
+c1094,Dizzy,蒂姬,mage,ice,0
+c1095,Lilibet,莉莉贝,warrior,earth,5
+c1096,Melissa,梅丽莎,mage,fire,4
+c1097,Bomb Model Kanna,暴击型卡农,ranger,fire,0
+c1099,Command Model Laika,指挥型莱伊卡,ranger,earth,9
+c1100,Alencia,艾莲西雅,warrior,earth,1
+c1101,Choux,小泡芙,warrior,ice,0
+c1102,Roana,罗安纳,manauser,earth,12
+c1103,Celine,瑟琳,assassin,earth,145
+c1104,Mort,魔勒,knight,earth,423
+c1105,Elphelt,爱尔菲特,ranger,fire,0
+c1106,Senya,赛娜,knight,earth,0
+c1107,Kizuna AI,绊爱,manauser,fire,0
+c1108,Ervalen,艾尔巴伦,assassin,earth,0
+c1109,Landy,兰蒂,ranger,earth,98
+c1110,Flan,芙兰,ranger,ice,0
+c1111,Eda,艾妲,mage,ice,0
+c1112,Politis,佛里蒂丝,mage,fire,64
+c1113,Ilynav,伊莉娜芙,knight,fire,0
+c1114,Rem,雷姆,warrior,ice,0
+c1115,Ram,拉姆,mage,earth,0
+c1116,Emilia,爱蜜莉雅,manauser,ice,0
+c1117,Belian,伯里安,knight,light,1807
+c1118,Ran,岚,assassin,ice,4
+c1119,Zahhak,札哈克,warrior,earth,4
+c1121,Rimuru,利姆路,warrior,earth,0
+c1122,Milim,蜜莉姆,mage,fire,1
+c1123,Shuna,朱菜,manauser,fire,1
+c1124,Arunka,亚露嘉,warrior,earth,0
+c1125,Peira,沛伊拉,assassin,ice,2
+c1126,Lua,路雅,ranger,ice,1
+c1127,Taeyou,太悟,warrior,ice,6
+c1128,Hwayoung,和英,warrior,fire,1
+c1129,Aria,艾莉雅,mage,ice,3
+c1130,Jack-O',洁克‧欧,warrior,fire,3
+c1131,Yulha,律荷,knight,earth,54
+c1132,Sharun,莎伦,manauser,earth,0
+c1133,Zio,智武,mage,dark,1959
+c1134,Edward Elric,爱德华‧爱力克,warrior,fire,13
+c1135,Roy Mustang,罗伊‧马斯坦古,mage,fire,0
+c1136,Riza Hawkeye,莉莎‧霍克爱,ranger,ice,1
+c1137,ae-KARINA,ae-KARINA,knight,ice,1
+c1138,ae-GISELLE,ae-GISELLE,mage,earth,0
+c1139,ae-WINTER,ae-WINTER,assassin,fire,0
+c1140,ae-NINGNING,ae-NINGNING,manauser,fire,0
+c1141,Beehoo,雨修,ranger,fire,0
+c1142,Eligos,艾利戈斯,ranger,fire,12
+c1143,Amid,雅咪德,manauser,ice,640
+c1144,Abigail,雅碧凯,warrior,fire,2
+c1145,Brieg,布里克,knight,ice,0
+c1146,Benimaru,红丸,warrior,fire,1
+c1147,Fumyr,芙米尔,mage,ice,16
+c1148,Elvira,艾碧拉,assassin,ice,105
+c1150,Veronica,贝洛妮卡,ranger,fire,131
+c1151,Nahkwol,落月,ranger,fire,30
+c1152,Kane,该隐,warrior,fire,0
+c1153,Harsetti,赫尔赛蒂,mage,dark,3397
+c1154,Byblis,维波里丝,ranger,ice,0
+c1155,Ainz Ooal Gown,安兹‧乌尔‧恭,mage,dark,0
+c1156,Albedo,雅儿贝德,knight,earth,0
+c1157,Shalltear,夏提雅,warrior,fire,1
+c1158,Fenris,佩里斯,ranger,earth,22
+c1159,Laia,莱娅,warrior,earth,3
+c1160,Birgitta,碧儿姬达,manauser,ice,112
+c1161,Immortal Wukong,不灭神机悟空,warrior,earth,6
+c1162,Young Senya,小小赛娜,manauser,earth,282
+c1163,Frida,弗莉达,manauser,ice,12
+c1166,Victorika,维多丽卡,knight,fire,0
+c1168,Rinak,利纳柯,assassin,earth,1855
+c1169,Robin,露彬,ranger,fire,4
+c1170,Fenne,斐妮,manauser,ice,1
+c1171,Tori,兔菈玫,assassin,fire,1280
+c1172,Frieren,芙莉莲,mage,earth,3754
+c1173,Fern,费伦,mage,ice,37
+c1174,Stark,修塔尔克,warrior,fire,0
+c1176,Setsuka,雪花,assassin,fire,1233
+c1177,Saria,萨若米亚,ranger,earth,97
+c1178,Hecate,赫卡特,warrior,earth,723
+c1179,Aki,亚奇,warrior,fire,102
+c1180,Ruiza,露易莎,ranger,fire,9
+c1182,Ivana,伊凡娜,manauser,fire,1296
+c1183,Estelle,艾丝黛,knight,earth,3620
+c2001,Genesis Ras,起源拉斯,knight,light,580
+c2002,Fallen Cecilia,堕落的赛西莉亚,knight,dark,80
+c2003,Shadow Rose,暗影萝季,knight,dark,0
+c2004,Wanderer Silk,流浪者席可,ranger,light,80
+c2005,Celestial Mercedes,外太空的玫勒赛德丝,mage,dark,0
+c2006,Judge Kise,审判者绮世,warrior,light,7
+c2007,Arbiter Vildred,执行官维德瑞,assassin,dark,1842
+c2008,Crimson Armin,红焰亚敏,knight,light,6
+c2009,Little Queen Charlotte,年轻的女王夏绿蒂,warrior,light,8
+c2010,Champion Zerato,终结者杰拉图,mage,dark,0
+c2011,Blood Blade Karin,血剑卡琳,assassin,dark,30
+c2012,Dark Corvus,黑暗的科尔布思,warrior,dark,58
+c2013,Assassin Cartuja,杀手卡尔图哈,warrior,dark,14
+c2014,Assassin Cidd,杀手席德,assassin,dark,40
+c2015,Sage Baal & Sezan,贤者巴尔&塞尚,mage,light,40
+c2016,Abyssal Yufine,深渊优芬妮,knight,dark,67
+c2017,Shooting Star Achates,流星雅卡泰丝,manauser,dark,0
+c2018,Guider Aither,求道者埃德勒,mage,light,0
+c2019,Apocalypse Ravi,末日萝菲,warrior,dark,114
+c2020,Watcher Schuri,注视者修里,ranger,light,2
+c2021,Blaze Dingo,烈火汀果,manauser,light,0
+c2022,Destina,戴丝蒂娜,manauser,earth,94
+c2023,Twisted Eidolon Kayron,扭曲的亡灵凯隆,assassin,light,58
+c2024,Briar Witch Iseria,灰光森林的伊赛丽亚,ranger,dark,1441
+c2027,Closer Charles,末日指挥官查尔斯,assassin,dark,3
+c2028,Kitty Clarissa,猫咪克莱莉莎,warrior,dark,0
+c2029,Roaming Warrior Leo,流浪勇士雷欧,ranger,dark,0
+c2031,Auxiliary Lots,辅助型拉兹,mage,dark,7
+c2032,Fighter Maya,战斗型玛雅,knight,light,0
+c2033,Assassin Coli,杀手可丽,assassin,dark,0
+c2035,General Purrgis,大将法济斯,warrior,light,0
+c2036,Troublemaker Crozet,不法之徒克罗泽,knight,dark,0
+c2037,Challenger Dominiel,挑战者多米妮尔,mage,dark,2
+c2038,Specimen Sez,实验体赛兹,assassin,light,3
+c2039,Blood Moon Haste,赤月的贵族海斯特,manauser,dark,5
+c2042,Ambitious Tywin,野心份子泰温,knight,light,18
+c2043,Benevolent Romann,仁慈的洛曼,mage,light,0
+c2046,Faithless Lidica,无神论者丽迪卡,ranger,light,0
+c2047,Martial Artist Ken,武斗家肯恩,warrior,dark,5
+c2048,Silver Blade Aramintha,白银刀刃的雅拉敏塔,mage,light,183
+c2049,Maid Chloe,仆人克萝爱,manauser,light,242
+c2050,Specter Tenebria,幻影的泰妮布里雅,mage,dark,3
+c2053,Desert Jewel Basar,沙漠宝石巴萨尔,manauser,light,11
+c2054,Crescent Moon Rin,新月舞姬铃儿,assassin,dark,0
+c2062,Sinful Angelica,罪戾的安洁莉卡,manauser,dark,17
+c2065,Tempest Surin,风云苏琳,assassin,light,0
+c2066,New Moon Luna,新月露娜,mage,light,977
+c2069,Eternal Wanderer Ludwig,永劫漂流者鲁特比,mage,dark,14
+c2070,Last Rider Krau,最后的骑士克劳乌,knight,light,87
+c2071,Lone Crescent Bellona,一轮孤月维尔萝娜,warrior,dark,1336
+c2072,Operator Sigret,操作员赛珂兰特,ranger,dark,29
+c2073,Mediator Kawerik,协调者卡威利,warrior,dark,14
+c2074,Remnant Violet,残影的菲奥雷托,assassin,dark,1
+c2076,Shepherd of the Dark Diene,黑暗牧者迪埃妮,mage,dark,2509
+c2079,Lionheart Cermia,狮心王洁若米亚,warrior,light,159
+c2080,Commander Pavel,司令官帕贝尔,ranger,light,113
+c2082,Top Model Luluca,最强模特儿璐璐卡,mage,dark,102
+c2085,Inferno Khawazu,烈焰的卡瓦朱,warrior,dark,1
+c2086,Great Chief Khawana,大族长卡瓦娜,warrior,dark,0
+c2087,Peacemaker Furious,平衡的尤贝乌斯,ranger,dark,1
+c2088,Sylvan Sage Vivian,森之贤者薇薇安,mage,light,9
+c2089,Conqueror Lilias,支配者莉莉亚斯,warrior,light,6
+c2090,Death Dealer Ray,死亡探究者雷伊,manauser,dark,355
+c2091,Astromancer Elena,星辰的神谕艾蕾娜,ranger,light,11
+c2095,Designer Lilibet,设计师莉莉贝,warrior,dark,100
+c2099,Architect Laika,策画者莱伊卡,mage,light,57
+c2101,Urban Shadow Choux,都市暗影小泡芙,warrior,dark,30
+c2102,Requiem Roana,镇魂的罗安纳,mage,dark,72
+c2103,Spirit Eye Celine,灵眼的瑟琳,assassin,light,1642
+c2106,Dragon Bride Senya,龙之伴侣赛娜,knight,light,27
+c2109,Navy Captain Landy,海军上校兰蒂,knight,light,12
+c2110,Pirate Captain Flan,海盗船长芙兰,ranger,dark,735
+c2111,Solitaria of the Snow,雪国的苏莉塔妮亚,mage,light,37
+c2112,Sea Phantom Politis,海上幽灵佛里蒂丝,ranger,dark,817
+c2113,Empyrean Ilynav,苍穹伊莉娜芙,knight,light,513
+c2124,Boss Arunka,组长亚露嘉,knight,light,5403
+c2125,Lone Wolf Peira,孤狼沛伊拉,warrior,dark,170
+c2126,Hellion Lua,小恶魔路雅,ranger,dark,87
+c2127,Successor Taeyou,继承人太悟,warrior,light,248
+c2128,Bystander Hwayoung,旁观者和英,warrior,dark,255
+c2129,Disciplinary Prefect Aria,风纪委员艾莉雅,warrior,dark,978
+c2131,School Nurse Yulha,保健室老师律荷,assassin,dark,2871
+c2132,Dragon King Sharun,龙王莎伦,manauser,light,112
+c2165,New Kid Adin,转学生艾庭,assassin,dark,24
+c2181,Notos,诺托斯,knight,light,7274
+c2184,Salome,萨洛美,warrior,dark,4470
+c3001,Butcher Corps Inquisitor,屠杀部队员,knight,fire,0
+c3002,Taranor Royal Guard,塔拉诺尔王宫士兵,knight,ice,0
+c3003,Kluri,可露莉,knight,earth,0
+c3004,Arowell,雅洛薇,knight,light,0
+c3005,Pyllis,费莉丝,knight,dark,0
+c3006,Bask,巴思克,knight,ice,0
+c3011,Judith,茱迪丝,assassin,fire,0
+c3012,Alexa,雅莉莎,assassin,ice,0
+c3013,Roozid,鲁兹德,assassin,earth,0
+c3014,Mirsa,米勒莎,assassin,light,0
+c3015,Sven,史宾,assassin,dark,0
+c3021,Tieria,黛莉亚,warrior,fire,0
+c3022,Enott,艾诺特,warrior,ice,0
+c3023,Helga,赫尔嘉,warrior,earth,0
+c3024,Gunther,坤特,warrior,light,0
+c3025,Church of Ilryos Axe,伊利欧斯教斧兵,warrior,dark,0
+c3026,Free Spirit Tieria,永恒不变的黛莉亚,warrior,light,0
+c3031,Azalea,亚洁理亚,warrior,fire,6
+c3032,Taranor Guard,塔拉诺尔禁卫队员,warrior,ice,0
+c3033,Mucacha,穆卡察,warrior,earth,0
+c3034,Rikoris,里科黎司,warrior,light,0
+c3035,Lorina,萝里娜,warrior,dark,0
+c3041,Hazel,海兹,manauser,fire,0
+c3042,Montmorancy,蒙茉朗西,manauser,ice,0
+c3043,Adlay,亚迪赖,mage,earth,0
+c3044,Doris,朵莉思,manauser,light,0
+c3045,Otillie,奥缇莉尔,mage,dark,0
+c3051,Carrot,卡萝,mage,fire,0
+c3052,Jena,捷娜,mage,ice,0
+c3053,Jecht,杰克托,manauser,earth,0
+c3054,Elson,艾尔森,manauser,light,0
+c3055,Hurado,修拉杜,mage,dark,0
+c3061,Nemunas,尼姆拉斯,ranger,fire,0
+c3062,Rima,黎玛,ranger,ice,0
+c3063,Kiris,奇丽丝,ranger,earth,0
+c3064,Celeste,赛雷斯特,ranger,light,0
+c3065,Wanda,汪达,ranger,dark,0
+c3071,Carmainerose,卡麦萝兹,mage,fire,0
+c3072,Mistychain,美丝缇彩,mage,ice,0
+c3073,Pearlhorizon,波萝莱珍,mage,earth,0
+c3074,Gloomyrain,格鲁美兰,mage,light,2
+c3075,Requiemroar,雷奎姆洛,manauser,dark,0
+c3084,Kikirat v2,奇奇拉特V.2,knight,light,0
+c3091,Hataan,哈坦,assassin,fire,0
+c3092,Lena,雷娜,warrior,ice,0
+c3093,Ains,艾因兹,warrior,earth,0
+c3094,Eaton,伊顿,knight,light,1
+c3095,Batisse,巴托斯,warrior,dark,0
+c3101,Godmother,教母,ranger,fire,0
+c3102,Ian,伊安,ranger,ice,0
+c3103,Glenn,格伦,ranger,earth,0
+c3104,Sonia,苏尼娅,manauser,light,0
+c3105,Ainos,艾诺斯,manauser,dark,0
+c3113,Lucy,露西,manauser,earth,0
+c3121,Melany,玫拉妮,warrior,fire,55
+c3122,Helen,海伦,knight,ice,55
+c3123,Christy,克莉丝媞,knight,earth,0
+c3124,Camilla,卡蜜拉,warrior,light,0
+c3125,Penelope,潘尼罗佩,assassin,dark,0
+c3131,Januta,扎努塔,warrior,fire,0
+c3132,Muwi,武蔚,assassin,ice,0
+c3133,Orte,奥乐缇,assassin,earth,0
+c3134,Yoonryoung,尹凌,knight,light,0
+c3135,Hasol,夏率,knight,dark,2
+c3143,Adin,艾庭,assassin,earth,0
+c3151,Juni,珠妮,warrior,fire,0
+c3152,Talaz,达拉士,warrior,ice,0
+c3153,Lilka,莉珈,ranger,earth,1
+c3154,Talia,达黎儿,assassin,light,0
+c3155,Suthan,斯坦,mage,dark,0
+c3156,Claudia,克劳蒂亚,knight,fire,0
+c3157,Ezra,艾自拉,assassin,earth,0
+c3158,Amiki,雅蜜琪,warrior,ice,0
+c3160,Revna,蕾芙娜,assassin,dark,0
+c3162,Bernard,伯纳德,manauser,earth,0
+c3163,Leah,蕾娅,ranger,earth,0
+c3164,Ragnvald,朗巴特,assassin,ice,0
+c3165,Pernilla,培妮拉,warrior,dark,0
+c4001,Chaos Inquisitor,混沌教屠杀追击者,knight,fire,0
+c4003,Falconer Kluri,鹰猎人可露莉,knight,earth,0
+c4004,Unbound Knight Arowell,自由骑士雅洛薇,knight,light,410
+c4005,Shadow Knight Pyllis,黑骑士费莉丝,knight,dark,2
+c4012,Summer's Disciple Alexa,夏天的学生雅莉莎,assassin,ice,0
+c4013,Righteous Thief Roozid,义贼鲁兹德,assassin,earth,0
+c4023,Mercenary Helga,自由自在的佣兵赫尔嘉,warrior,earth,0
+c4025,Chaos Sect Axe,混沌教巨斧大将军,warrior,dark,0
+c4034,Captain Rikoris,先锋队长里科黎司,warrior,light,0
+c4035,Commander Lorina,指挥官萝里娜,warrior,dark,1
+c4041,Mascot Hazel,吉祥物海兹,manauser,fire,0
+c4042,Angelic Montmorancy,守护天使蒙茉朗西,manauser,ice,1
+c4044,Magic Scholar Doris,魔法学者朵莉思,manauser,light,0
+c4051,Researcher Carrot,研究者卡萝,mage,fire,0
+c4052,Shepherd Jena,引导者捷娜,mage,ice,0
+c4062,Muse Rima,缪斯黎玛,ranger,ice,0
+c4065,All-Rounder Wanda,疑难杂症专家汪达,ranger,dark,0
+c4071,Zealot Carmainerose,传道者卡麦萝兹,mage,fire,0
+c4073,Doll Maker Pearlhorizon,制偶师波萝莱珍,mage,earth,8
+c4103,Vigilante Leader Glenn,自卫队队长格伦,ranger,earth,0
+c4105,Ainos 2.0,艾诺斯2.0,manauser,dark,1
+c4123,Silvertide Christy,银波克莉丝媞,knight,earth,834
+c4141,Holy Flame Adin,圣炎的艾庭,assassin,fire,0
+c4142,Serene Purity Adin,清玄的艾庭,assassin,ice,0
+c4143,Verdant Adin,新绿的艾庭,assassin,earth,0
+c4144,Savior Adin,救援者艾庭,assassin,light,13
+c4158,Inheritor Amiki,传承雅蜜琪,warrior,ice,119
+c5001,Adventurer Ras,冒险家拉斯,knight,fire,48
+c5004,Archdemon's Shadow,魔神的暗影,mage,dark,10
+c5009,Summer Break Charlotte,暑假夏绿蒂,knight,ice,134
+c5016,Holiday Yufine,度假风优芬妮,warrior,fire,16
+c5024,Summertime Iseria,南国的伊赛丽亚,ranger,fire,7
+c5033,Tactical Archetype Coli,战术型可丽,assassin,ice,648
+c5046,Blooming Lidica,花园丽迪卡,assassin,earth,23
+c5050,Fairytale Tenebria,童话泰妮布里雅,mage,ice,0
+c5070,Guard Captain Krau,护卫队长克劳乌,warrior,fire,11
+c5071,Seaside Bellona,海边的维尔萝娜,ranger,ice,0
+c5072,Swift Flagbearer Sigret,疾速赛车手赛珂兰特,assassin,fire,1617
+c5082,Ocean Breeze Luluca,海洋香气璐璐卡,manauser,earth,13
+c5089,Midnight Gala Lilias,夜宴莉莉亚斯,assassin,earth,95
+c5110,Afternoon Soak Flan,午时戏水芙兰,ranger,fire,292
+c5111,Festive Eda,庆典艾妲,mage,fire,591
+c5128,Argent Waves Hwayoung,银光海啸和英,assassin,ice,45
+c5149,Lethe,丽希,warrior,ice,159
+c5154,Perfumer Byblis,调香师维波里丝,manauser,fire,6779
+c5175,Aram,亚澜,manauser,fire,206
+c6003,Wretched Rose,悲叹萝季,manauser,light,5
+c6005,Lady of the Scales,天秤之主,manauser,light,6624
+c6008,Bad Cat Armin,坏坏猫亚敏,warrior,dark,0
+c6011,Last Piece Karin,最后的碎片卡琳,assassin,light,4
+c6014,Wandering Prince Cidd,流浪王子席德,mage,light,10
+c6017,Infinite Horizon Achates,未知的可能性雅卡泰丝,manauser,light,169
+c6020,Westwind Executioner Schuri,西风处刑者修里,ranger,dark,40
+c6024,Monarch of the Sword Iseria,宝剑君主伊赛丽亚,knight,light,1181
+c6037,Moon Bunny Dominiel,月兔多米妮尔,manauser,light,506
+c6050,Witch of the Mere Tenebria,湖畔魔女泰妮布里雅,mage,light,685
+c6062,Angel of Light Angelica,光之天使安洁莉卡,mage,light,7
+c6065,Sealed Eye Surin,封眼苏琳,mage,dark,3

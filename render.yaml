@@ -1,0 +1,28 @@
+# Render Blueprint: Flask API + TensorFlow inference
+# Connect this repo in Render Dashboard → New → Blueprint
+services:
+  - type: web
+    name: e7-bp-helper-api
+    runtime: python
+    plan: starter
+    region: singapore
+    buildCommand: pip install -r requirements-recommender.txt
+    startCommand: >-
+      gunicorn recommender_service:app
+      --bind 0.0.0.0:$PORT
+      --workers 1
+      --threads 2
+      --timeout 120
+      --preload
+    healthCheckPath: /api/status
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.4"
+      - key: RECOMMENDER_RERANKER
+        value: "true"
+      - key: TF_CPP_MIN_LOG_LEVEL
+        value: "2"
+      - key: ALLOWED_ORIGINS
+        sync: false
+      # Set ALLOWED_ORIGINS in the Render dashboard after Vercel deploy, e.g.:
+      # https://your-app.vercel.app

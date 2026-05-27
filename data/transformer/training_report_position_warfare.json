@@ -1,0 +1,57 @@
+{
+  "device": "cpu",
+  "weights_out": "C:\\Users\\wuyuh\\PycharmProjects\\AI Projects\\E7_BP_Helper\\data\\transformer\\rec_model_position_warfare.weights.h5",
+  "train_samples": 42930,
+  "validation_samples": 10728,
+  "parameters": 2019263,
+  "config": {
+    "epochs": 60,
+    "batch_size": 64,
+    "patience": 8,
+    "learning_rate": 0.0005,
+    "d_model": 256,
+    "num_heads": 8,
+    "ff_dim": 512,
+    "num_layers": 3,
+    "num_roles": 8,
+    "num_elements": 7,
+    "num_position_buckets": 9,
+    "position_buckets": [
+      "1",
+      "2_3",
+      "4",
+      "5_protected",
+      "6_protected",
+      "7",
+      "8_9",
+      "10"
+    ],
+    "num_warfare_rules": 5,
+    "warfare_rules": [
+      "Support",
+      "Offense",
+      "Defense",
+      "Resistance"
+    ],
+    "seed": 42
+  },
+  "monitor": "val_top_3_accuracy",
+  "best_epoch": 42,
+  "best_val_top_3_accuracy": 0.6127889752388,
+  "best_val_top_5_accuracy": 0.715976893901825,
+  "best_val_loss": 2.867709159851074,
+  "final_metrics": {
+    "loss": 1.0401687622070312,
+    "accuracy": 0.6685301661491394,
+    "top_3_accuracy": 0.8933612704277039,
+    "top_5_accuracy": 0.950850248336792,
+    "top_10_accuracy": 0.9894479513168335,
+    "val_loss": 2.8930485248565674,
+    "val_accuracy": 0.36530575156211853,
+    "val_top_3_accuracy": 0.6109246611595154,
+    "val_top_5_accuracy": 0.7178411483764648,
+    "val_top_10_accuracy": 0.8412564992904663,
+    "lr": 9.999999747378752e-06
+  },
+  "elapsed_seconds": 1900.3180139064789
+}
