@@ -3,7 +3,6 @@ import json
 import logging
 import os
 import sys
-import tempfile
 from collections import OrderedDict
 from pathlib import Path
 
@@ -340,29 +339,53 @@ def build_transformer_model_kwargs(encoders: DraftEncoders) -> dict[str, int]:
     return kwargs
 
 
-def _ensure_h5_group(h5_file: h5py.File, group_path: str) -> h5py.Group:
-    group: h5py.Group | h5py.File = h5_file
-    for part in group_path.split("/"):
-        if part not in group:
-            group = group.create_group(part)
-        else:
-            group = group[part]
-    return group
+KERAS3_LAYER_WEIGHT_PERMUTATION = (
+    16, 17, 18, 19, 20, 21, 22, 24, 25, 42, 43, 38, 39, 44, 45, 40, 41, 26, 27, 0, 1, 2, 3, 28,
+    29, 50, 51, 46, 47, 52, 53, 48, 49, 30, 31, 4, 5, 6, 7, 32, 33, 58, 59, 54, 55, 60, 61, 56, 57,
+    34, 35, 8, 9, 10, 11, 36, 37, 23, 12, 13, 14, 15,
+)
 
 
-def normalize_keras3_weights_h5(source_path: Path, destination_path: Path) -> None:
-    """Rewrite Keras 3 weight paths that use backslashes so Linux h5py can read them."""
-    with h5py.File(source_path, "r") as source_file, h5py.File(destination_path, "w") as destination_file:
+def _read_keras3_layer_weight_arrays(weights_path: Path) -> list[np.ndarray]:
+    arrays: list[np.ndarray] = []
+    with h5py.File(weights_path, "r") as weights_file:
 
-        def copy_dataset(name: str, obj: h5py.Dataset) -> None:
+        def collect(name: str, obj: object) -> None:
+            if not isinstance(obj, h5py.Dataset):
+                return
             if not name.startswith("layers"):
                 return
-            normalized_name = name.replace("\\", "/")
-            group_path, dataset_name = normalized_name.rsplit("/", 1)
-            group = _ensure_h5_group(destination_file, group_path)
-            group.create_dataset(dataset_name, data=obj[()])
+            if "/vars/" not in name.replace("\\", "/"):
+                return
+            arrays.append(np.asarray(obj))
 
-        source_file.visititems(lambda name, obj: copy_dataset(name, obj) if isinstance(obj, h5py.Dataset) else None)
+        weights_file.visititems(collect)
+    return arrays
+
+
+def assign_keras3_layer_weights(model: tf.keras.Model, weights_path: Path) -> None:
+    arrays = _read_keras3_layer_weight_arrays(weights_path)
+    expected = len(KERAS3_LAYER_WEIGHT_PERMUTATION)
+    if len(arrays) != expected:
+        raise RuntimeError(
+            f"Expected {expected} Keras 3 layer weight arrays in {weights_path}, found {len(arrays)}"
+        )
+
+    trainable_weights = model.trainable_weights
+    if len(trainable_weights) != expected:
+        raise RuntimeError(
+            f"Expected {expected} trainable transformer weights, found {len(trainable_weights)}"
+        )
+
+    for model_idx, h5_idx in enumerate(KERAS3_LAYER_WEIGHT_PERMUTATION):
+        variable = trainable_weights[model_idx]
+        value = arrays[h5_idx]
+        if tuple(variable.shape.as_list()) != value.shape:
+            raise RuntimeError(
+                f"Weight shape mismatch for {variable.name}: model={tuple(variable.shape.as_list())}, "
+                f"h5={value.shape}"
+            )
+        variable.assign(value)
 
 
 def load_transformer_weights(model: tf.keras.Model, weights_path: Path) -> None:
@@ -373,28 +396,18 @@ def load_transformer_weights(model: tf.keras.Model, weights_path: Path) -> None:
             model.load_weights(str(weights_path), by_name=by_name)
             logging.info("Loaded transformer weights from %s (by_name=%s)", weights_path, by_name)
             return
-        except ValueError as exc:
+        except (ValueError, KeyError) as exc:
             errors.append(f"by_name={by_name}: {exc}")
 
-    normalized_path: Path | None = None
     try:
-        with tempfile.NamedTemporaryFile(suffix=".weights.h5", delete=False) as temp_file:
-            normalized_path = Path(temp_file.name)
-        normalize_keras3_weights_h5(weights_path, normalized_path)
-        model.load_weights(str(normalized_path), by_name=True)
-        logging.info(
-            "Loaded transformer weights from %s after normalizing Keras 3 path separators",
-            weights_path,
-        )
-    except (OSError, ValueError) as exc:
-        errors.append(f"normalized_by_name=True: {exc}")
+        assign_keras3_layer_weights(model, weights_path)
+        logging.info("Loaded transformer weights from %s via Keras 3 h5 assignment", weights_path)
+    except (OSError, RuntimeError) as exc:
+        errors.append(f"keras3_assignment: {exc}")
         raise RuntimeError(
             f"Failed to load transformer weights from {weights_path}. "
             f"Attempts: {'; '.join(errors)}"
         ) from exc
-    finally:
-        if normalized_path is not None:
-            normalized_path.unlink(missing_ok=True)
 
 
 def load_transformer_recommender() -> None:
