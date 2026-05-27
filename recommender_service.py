@@ -307,7 +307,7 @@ def load_hero_options() -> list[dict[str, object]]:
 
 
 def ensure_recommender_loaded() -> None:
-    if transformer_model is None:
+    if transformer_model is None or transformer_encoders is None or not available_heroes:
         load_recommender()
 
 
@@ -322,10 +322,36 @@ def build_transformer_model_kwargs(encoders: DraftEncoders) -> dict[str, int]:
     if TRANSFORMER_TRAINING_REPORT_PATH_WARFARE.exists():
         with TRANSFORMER_TRAINING_REPORT_PATH_WARFARE.open(encoding="utf-8") as f:
             config = json.load(f).get("config", {})
-        for key in ("d_model", "num_heads", "ff_dim", "num_layers"):
+        for key in (
+            "d_model",
+            "num_heads",
+            "ff_dim",
+            "num_layers",
+            "num_roles",
+            "num_elements",
+            "num_position_buckets",
+            "num_warfare_rules",
+        ):
             if key in config:
                 kwargs[key] = int(config[key])
     return kwargs
+
+
+def load_transformer_weights(model: tf.keras.Model, weights_path: Path) -> None:
+    """Load weights saved from Keras 3 training (layers/embedding...) on Linux and Windows."""
+    path_str = str(weights_path)
+    errors: list[str] = []
+    for by_name in (False, True):
+        try:
+            model.load_weights(path_str, by_name=by_name)
+            logging.info("Loaded transformer weights from %s (by_name=%s)", weights_path, by_name)
+            return
+        except ValueError as exc:
+            errors.append(f"by_name={by_name}: {exc}")
+    raise RuntimeError(
+        f"Failed to load transformer weights from {weights_path}. "
+        f"Attempts: {'; '.join(errors)}"
+    )
 
 
 def load_transformer_recommender() -> None:
@@ -335,10 +361,12 @@ def load_transformer_recommender() -> None:
         model_path=TRANSFORMER_MODEL_PATH,
         variables_path=TRANSFORMER_VARIABLES_PATH,
     )
-    transformer_encoders = DraftEncoders.load(TRANSFORMER_VARIABLES_PATH)
-    validate_loaded_encoders(transformer_encoders)
-    transformer_model = build_transformer_draft_model(**build_transformer_model_kwargs(transformer_encoders))
-    transformer_model.load_weights(str(TRANSFORMER_MODEL_PATH))
+    encoders = DraftEncoders.load(TRANSFORMER_VARIABLES_PATH)
+    validate_loaded_encoders(encoders)
+    model = build_transformer_draft_model(**build_transformer_model_kwargs(encoders))
+    load_transformer_weights(model, TRANSFORMER_MODEL_PATH)
+    transformer_encoders = encoders
+    transformer_model = model
     logging.info("Loaded Transformer recommender from %s", TRANSFORMER_MODEL_PATH)
 
 
@@ -349,6 +377,7 @@ def load_recommender() -> None:
     clear_recommendation_cache()
     transformer_model = None
     transformer_encoders = None
+    available_heroes = {}
 
     load_transformer_recommender()
     available_heroes = {
@@ -356,6 +385,8 @@ def load_recommender() -> None:
         for code in transformer_encoders.hero_to_id
         if code not in {"<PAD>", "<UNK>"}
     }
+    if not available_heroes:
+        raise RuntimeError("Transformer encoders loaded zero playable heroes")
     # Warm up TensorFlow so the first real request is less likely to stutter.
     predict_next_hero(["unknown"], ["unknown"], "My Team")
 
