@@ -16,6 +16,13 @@ from first_pick_recommender import is_first_pick_recommendation_turn, recommend_
 from final_ban_recommender import recommend_final_bans_from_lists
 from preban_recommender import parse_first_pick_side, parse_top_k, recommend_prebans, resolve_preban_first_pick_side
 from recommendation_reranker import rerank_candidates
+from runtime_diagnostics import (
+    build_hero_debug_payload,
+    build_runtime_debug_payload,
+    collect_recommend_debug,
+    validate_loaded_encoders,
+    validate_transformer_artifact_paths,
+)
 from runtime_paths import (
     APP_BASE_DIR,
     ELEMENT_ICON_DIR,
@@ -84,6 +91,7 @@ def recommendation_cache_key(
     first_pick_team: str,
     warfare_rules: str,
 ) -> tuple:
+    """Cache key uses normalized pick lists; preban codes are sorted for stable matching."""
     return (
         tuple(user_picks),
         tuple(enemy_picks),
@@ -323,9 +331,12 @@ def build_transformer_model_kwargs(encoders: DraftEncoders) -> dict[str, int]:
 def load_transformer_recommender() -> None:
     global transformer_model, transformer_encoders
 
+    validate_transformer_artifact_paths(
+        model_path=TRANSFORMER_MODEL_PATH,
+        variables_path=TRANSFORMER_VARIABLES_PATH,
+    )
     transformer_encoders = DraftEncoders.load(TRANSFORMER_VARIABLES_PATH)
-    transformer_encoders._require_position_bucket_encoders()
-    transformer_encoders._require_warfare_rule_encoders()
+    validate_loaded_encoders(transformer_encoders)
     transformer_model = build_transformer_draft_model(**build_transformer_model_kwargs(transformer_encoders))
     transformer_model.load_weights(str(TRANSFORMER_MODEL_PATH))
     logging.info("Loaded Transformer recommender from %s", TRANSFORMER_MODEL_PATH)
@@ -455,14 +466,21 @@ def predict_transformer_hero_probs(
     arrays: dict[str, np.ndarray],
     *,
     warfare_rules: str,
+    inference_debug: dict[str, object] | None = None,
 ) -> np.ndarray:
     if transformer_model is None or transformer_encoders is None:
         raise RuntimeError("Transformer recommender is not loaded")
 
     normalized_rule = normalize_warfare_rules_param(warfare_rules)
     candidate_mask = arrays["candidate_mask"][0]
+    if inference_debug is not None:
+        inference_debug["normalized_warfare_rules"] = normalized_rule
+        inference_debug["any_blending_used"] = normalized_rule == WARFARE_RULE_ANY
+        inference_debug["concrete_rule_inference_calls"] = []
 
     if normalized_rule != WARFARE_RULE_ANY:
+        if inference_debug is not None:
+            inference_debug["concrete_rule_inference_calls"].append(normalized_rule)
         rule_arrays = clone_inference_arrays_with_rule(
             arrays,
             transformer_encoders,
@@ -474,8 +492,12 @@ def predict_transformer_hero_probs(
     priors = transformer_encoders.warfare_rule_priors or compute_warfare_rule_priors(
         {rule: 1 for rule in WARFARE_RULE_ORDER}
     )
+    if inference_debug is not None:
+        inference_debug["warfare_rule_priors"] = dict(priors)
     probs_by_rule: dict[str, np.ndarray] = {}
     for rule in WARFARE_RULE_ORDER:
+        if inference_debug is not None:
+            inference_debug["concrete_rule_inference_calls"].append(rule)
         rule_arrays = clone_inference_arrays_with_rule(arrays, transformer_encoders, rule)
         raw_probs = transformer_model.predict(arrays_to_model_inputs(rule_arrays), verbose=0)[0]
         probs_by_rule[rule] = mask_and_normalize_probs(raw_probs, candidate_mask)
@@ -492,6 +514,7 @@ def predict_next_hero_transformer(
     ally_preban: list[str] | None = None,
     enemy_preban: list[str] | None = None,
     warfare_rules: str = WARFARE_RULE_ANY,
+    inference_debug: dict[str, object] | None = None,
 ):
     if transformer_model is None or transformer_encoders is None:
         raise RuntimeError("Transformer recommender is not loaded")
@@ -526,7 +549,11 @@ def predict_next_hero_transformer(
         enemy_preban=enemy_preban,
         warfare_rules=warfare_rules,
     )
-    hero_probs = predict_transformer_hero_probs(arrays, warfare_rules=warfare_rules)
+    hero_probs = predict_transformer_hero_probs(
+        arrays,
+        warfare_rules=warfare_rules,
+        inference_debug=inference_debug,
+    )
 
     candidate_mask = arrays["candidate_mask"][0]
     top_10_heroes, top_10_rates = rank_available_recommendations(
@@ -581,6 +608,7 @@ def predict_next_hero(
     ally_preban: list[str] | None = None,
     enemy_preban: list[str] | None = None,
     warfare_rules: str = WARFARE_RULE_ANY,
+    inference_debug: dict[str, object] | None = None,
 ):
     return predict_next_hero_transformer(
         enemy_team_picks,
@@ -589,6 +617,7 @@ def predict_next_hero(
         ally_preban=ally_preban,
         enemy_preban=enemy_preban,
         warfare_rules=warfare_rules,
+        inference_debug=inference_debug,
     )
 
 
@@ -659,27 +688,65 @@ def recommend_characters():
         except ValueError as exc:
             return jsonify({"message": str(exc)}), 400
 
+        normalized_user_picks = normalize_picks(user_picks)
+        normalized_enemy_picks = normalize_picks(enemy_picks)
+        normalized_ally_preban = normalize_picks(ally_preban)
+        normalized_enemy_preban = normalize_picks(enemy_preban)
+
         cache_key = recommendation_cache_key(
-            user_picks=user_picks,
-            enemy_picks=enemy_picks,
-            ally_preban=ally_preban,
-            enemy_preban=enemy_preban,
+            user_picks=normalized_user_picks,
+            enemy_picks=normalized_enemy_picks,
+            ally_preban=normalized_ally_preban,
+            enemy_preban=normalized_enemy_preban,
             first_pick_team=first_pick_team,
             warfare_rules=warfare_rules,
         )
         cached_payload = get_cached_recommendation(cache_key)
-        if cached_payload is not None:
-            return jsonify(cached_payload), 200
+        from_cache = cached_payload is not None
+        inference_debug: dict[str, object] | None = {} if debug_recommendations_enabled() else None
 
-        payload = predict_next_hero(
-            enemy_picks,
-            user_picks,
-            first_pick_team,
-            ally_preban=ally_preban,
-            enemy_preban=enemy_preban,
-            warfare_rules=warfare_rules,
-        )
-        store_cached_recommendation(cache_key, payload)
+        if from_cache:
+            payload = dict(cached_payload)
+        else:
+            payload = dict(
+                predict_next_hero(
+                    normalized_enemy_picks,
+                    normalized_user_picks,
+                    first_pick_team,
+                    ally_preban=normalized_ally_preban,
+                    enemy_preban=normalized_enemy_preban,
+                    warfare_rules=warfare_rules,
+                    inference_debug=inference_debug,
+                )
+            )
+            store_cached_recommendation(cache_key, payload)
+
+        if debug_recommendations_enabled():
+            payload["debug"] = collect_recommend_debug(
+                raw_warfare_rules=raw_warfare_rules,
+                normalized_warfare_rules=warfare_rules,
+                user_picks=normalized_user_picks,
+                enemy_picks=normalized_enemy_picks,
+                ally_preban=normalized_ally_preban,
+                enemy_preban=normalized_enemy_preban,
+                first_pick_team=first_pick_team,
+                from_cache=from_cache,
+                payload=payload,
+                inference_debug=inference_debug,
+                available_heroes=available_heroes,
+                reranker_enabled=reranker_enabled(),
+                model_path=TRANSFORMER_MODEL_PATH,
+                variables_path=TRANSFORMER_VARIABLES_PATH,
+            )
+            payload["debug"]["cache_key"] = {
+                "user_picks": list(cache_key[0]),
+                "enemy_picks": list(cache_key[1]),
+                "ally_preban": list(cache_key[2]),
+                "enemy_preban": list(cache_key[3]),
+                "first_pick_team": cache_key[4],
+                "warfare_rules": cache_key[5],
+            }
+
         return jsonify(payload), 200
     except Exception as e:
         logging.exception("Error generating recommendation")
@@ -714,6 +781,41 @@ def recommend_preban_characters():
     except Exception as e:
         logging.exception("Error generating preban recommendation")
         return jsonify({"message": f"Error: {str(e)}"}), 500
+
+
+@app.get("/api/debug/runtime")
+def debug_runtime():
+    try:
+        ensure_recommender_loaded()
+        return jsonify(
+            build_runtime_debug_payload(
+                recommender_service_file=str(Path(__file__).resolve()),
+                transformer_model_path=TRANSFORMER_MODEL_PATH,
+                transformer_variables_path=TRANSFORMER_VARIABLES_PATH,
+                transformer_model_loaded=transformer_model is not None,
+                transformer_encoders=transformer_encoders,
+                available_heroes=available_heroes,
+            )
+        ), 200
+    except Exception as exc:
+        logging.exception("Error building runtime debug payload")
+        return jsonify({"message": str(exc)}), 500
+
+
+@app.get("/api/debug/hero/<hero_code>")
+def debug_hero(hero_code: str):
+    try:
+        ensure_recommender_loaded()
+        return jsonify(
+            build_hero_debug_payload(
+                hero_code,
+                transformer_encoders=transformer_encoders,
+                available_heroes=available_heroes,
+            )
+        ), 200
+    except Exception as exc:
+        logging.exception("Error building hero debug payload for %s", hero_code)
+        return jsonify({"message": str(exc)}), 500
 
 
 @app.get("/api/status")
