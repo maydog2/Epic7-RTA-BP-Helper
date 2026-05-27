@@ -3,8 +3,11 @@ import json
 import logging
 import os
 import sys
+import tempfile
 from collections import OrderedDict
 from pathlib import Path
+
+import h5py
 
 os.environ.setdefault("TF_USE_LEGACY_KERAS", "True")
 
@@ -337,21 +340,61 @@ def build_transformer_model_kwargs(encoders: DraftEncoders) -> dict[str, int]:
     return kwargs
 
 
+def _ensure_h5_group(h5_file: h5py.File, group_path: str) -> h5py.Group:
+    group: h5py.Group | h5py.File = h5_file
+    for part in group_path.split("/"):
+        if part not in group:
+            group = group.create_group(part)
+        else:
+            group = group[part]
+    return group
+
+
+def normalize_keras3_weights_h5(source_path: Path, destination_path: Path) -> None:
+    """Rewrite Keras 3 weight paths that use backslashes so Linux h5py can read them."""
+    with h5py.File(source_path, "r") as source_file, h5py.File(destination_path, "w") as destination_file:
+
+        def copy_dataset(name: str, obj: h5py.Dataset) -> None:
+            if not name.startswith("layers"):
+                return
+            normalized_name = name.replace("\\", "/")
+            group_path, dataset_name = normalized_name.rsplit("/", 1)
+            group = _ensure_h5_group(destination_file, group_path)
+            group.create_dataset(dataset_name, data=obj[()])
+
+        source_file.visititems(lambda name, obj: copy_dataset(name, obj) if isinstance(obj, h5py.Dataset) else None)
+
+
 def load_transformer_weights(model: tf.keras.Model, weights_path: Path) -> None:
     """Load weights saved from Keras 3 training (layers/embedding...) on Linux and Windows."""
-    path_str = str(weights_path)
     errors: list[str] = []
-    for by_name in (False, True):
+    for by_name in (True, False):
         try:
-            model.load_weights(path_str, by_name=by_name)
+            model.load_weights(str(weights_path), by_name=by_name)
             logging.info("Loaded transformer weights from %s (by_name=%s)", weights_path, by_name)
             return
         except ValueError as exc:
             errors.append(f"by_name={by_name}: {exc}")
-    raise RuntimeError(
-        f"Failed to load transformer weights from {weights_path}. "
-        f"Attempts: {'; '.join(errors)}"
-    )
+
+    normalized_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".weights.h5", delete=False) as temp_file:
+            normalized_path = Path(temp_file.name)
+        normalize_keras3_weights_h5(weights_path, normalized_path)
+        model.load_weights(str(normalized_path), by_name=True)
+        logging.info(
+            "Loaded transformer weights from %s after normalizing Keras 3 path separators",
+            weights_path,
+        )
+    except (OSError, ValueError) as exc:
+        errors.append(f"normalized_by_name=True: {exc}")
+        raise RuntimeError(
+            f"Failed to load transformer weights from {weights_path}. "
+            f"Attempts: {'; '.join(errors)}"
+        ) from exc
+    finally:
+        if normalized_path is not None:
+            normalized_path.unlink(missing_ok=True)
 
 
 def load_transformer_recommender() -> None:
