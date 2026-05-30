@@ -588,6 +588,18 @@ select {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-top: 18px;
+  align-items: start;
+}
+
+.preban-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.preban-settings .preban-button {
+  width: 100%;
 }
 
 .first-pick-controls button,
@@ -608,6 +620,33 @@ select {
 
 .first-pick-controls .preban-button {
   border-style: dashed;
+}
+
+.preban-memory-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+  padding: 4px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.58);
+  box-sizing: border-box;
+}
+
+.preban-memory-options button {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 6px 12px;
+}
+
+.preban-memory-options button.active {
+  background: rgba(96, 165, 250, 0.18);
+  color: #e0f2fe;
 }
 
 .warfare-rule-section {

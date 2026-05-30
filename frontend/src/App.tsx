@@ -35,6 +35,23 @@ type DraftPick = {
   code: string;
 };
 
+type PrebanMemoryMode = "shared" | "split";
+
+type AllyPrebanPresets = Record<FirstPickTeam, DraftPick[]>;
+
+const EMPTY_ALLY_PREBAN_PRESETS: AllyPrebanPresets = {
+  "My Team": [],
+  "Enemy Team": [],
+};
+
+function extractUserPrebans(prebanPicks: DraftPick[]): DraftPick[] {
+  return prebanPicks.filter((pick) => pick.team === "user");
+}
+
+function prebanPicksFromUserPresets(userPresets: DraftPick[]): DraftPick[] {
+  return userPresets.map((pick) => ({ team: "user" as const, code: pick.code }));
+}
+
 /** RTA: ally always prebans first (2 slots), then enemy (2 slots), regardless of first pick. */
 const PREBAN_ORDER: Team[] = ["user", "user", "enemy", "enemy"];
 
@@ -206,6 +223,7 @@ function DraftPanel(props: {
     enemyPrebanSlot: string;
     emptySlot: string;
     banned: string;
+    allyPrebanHeading: string;
   };
 }) {
   return (
@@ -222,7 +240,7 @@ function DraftPanel(props: {
         <span>{props.labels.preban}</span>
         <div className="preban-columns">
           <div className="preban-column">
-            <strong>{props.labels.ally}</strong>
+            <strong>{props.labels.allyPrebanHeading}</strong>
             <div className="preban-slots">
               {Array.from({ length: 2 }, (_, index) => {
                 const preban = props.userPrebans[index];
@@ -331,6 +349,10 @@ export default function App() {
   const [firstPickTeam, setFirstPickTeam] = useState<FirstPickTeam>("My Team");
   const [warfareRule, setWarfareRule] = useState<WarfareRule>("ANY");
   const [rememberPreban, setRememberPreban] = useState(false);
+  const [prebanMemoryMode, setPrebanMemoryMode] = useState<PrebanMemoryMode>("shared");
+  const [allyPrebanPresets, setAllyPrebanPresets] = useState<AllyPrebanPresets>(() => ({
+    ...EMPTY_ALLY_PREBAN_PRESETS,
+  }));
   const [isLoadingHeroes, setIsLoadingHeroes] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [aiRecommendation, setAiRecommendation] = useState<RecommendationResponse | null>(null);
@@ -363,8 +385,16 @@ export default function App() {
       enemyPrebanSlot: t(language, "enemyPrebanSlot"),
       emptySlot: t(language, "emptySlot"),
       banned: t(language, "banned"),
+      allyPrebanHeading:
+        rememberPreban && prebanMemoryMode === "split"
+          ? `${t(language, "ally")} · ${
+              firstPickTeam === "My Team"
+                ? t(language, "allyFirstPrebans")
+                : t(language, "enemyFirstPrebans")
+            }`
+          : t(language, "ally"),
     }),
-    [language],
+    [firstPickTeam, language, prebanMemoryMode, rememberPreban],
   );
 
   const userPicks = useMemo(() => draftPicks.filter((pick) => pick.team === "user"), [draftPicks]);
@@ -672,10 +702,44 @@ export default function App() {
   }
 
   function resetDraft(nextFirstPickTeam: FirstPickTeam) {
+    if (rememberPreban && prebanMemoryMode === "split") {
+      const currentUserPrebans = extractUserPrebans(prebanPicks);
+      const updatedPresets: AllyPrebanPresets = {
+        ...allyPrebanPresets,
+        [firstPickTeam]: currentUserPrebans,
+      };
+      setAllyPrebanPresets(updatedPresets);
+      setPrebanPicks(prebanPicksFromUserPresets(updatedPresets[nextFirstPickTeam]));
+    } else if (rememberPreban) {
+      setPrebanPicks((current) => current.filter((pick) => pick.team === "user"));
+    } else {
+      setPrebanPicks([]);
+    }
+
     setFirstPickTeam(nextFirstPickTeam);
-    setPrebanPicks((current) => (rememberPreban ? current.filter((pick) => pick.team === "user") : []));
     setDraftPicks([]);
     setPrebanSuggestionsCache(null);
+  }
+
+  function toggleRememberPreban() {
+    setRememberPreban((current) => {
+      const next = !current;
+      if (!next) {
+        setPrebanMemoryMode("shared");
+      }
+      return next;
+    });
+  }
+
+  function choosePrebanMemoryMode(nextMode: PrebanMemoryMode) {
+    if (nextMode === "split") {
+      const currentUserPrebans = extractUserPrebans(prebanPicks);
+      setAllyPrebanPresets((presets) => ({
+        ...presets,
+        [firstPickTeam]: currentUserPrebans,
+      }));
+    }
+    setPrebanMemoryMode(nextMode);
   }
 
   return (
@@ -723,13 +787,33 @@ export default function App() {
             >
               {t(language, "enemyFirst")}
             </button>
-            <button
-              type="button"
-              className={`preban-button${rememberPreban ? " active" : ""}`}
-              onClick={() => setRememberPreban((current) => !current)}
-            >
-              {t(language, "rememberPreban")}
-            </button>
+            <div className="preban-settings">
+              <button
+                type="button"
+                className={`preban-button${rememberPreban ? " active" : ""}`}
+                onClick={toggleRememberPreban}
+              >
+                {t(language, "rememberPreban")}
+              </button>
+              {rememberPreban && (
+                <div className="preban-memory-options" role="group" aria-label={t(language, "rememberPreban")}>
+                  <button
+                    type="button"
+                    className={prebanMemoryMode === "shared" ? "active" : ""}
+                    onClick={() => choosePrebanMemoryMode("shared")}
+                  >
+                    {t(language, "sharedPrebans")}
+                  </button>
+                  <button
+                    type="button"
+                    className={prebanMemoryMode === "split" ? "active" : ""}
+                    onClick={() => choosePrebanMemoryMode("split")}
+                  >
+                    {t(language, "splitPrebanByFirstPick")}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           <div className="warfare-rule-section">
             <span className="warfare-rule-label">{t(language, "warfareRules")}</span>
