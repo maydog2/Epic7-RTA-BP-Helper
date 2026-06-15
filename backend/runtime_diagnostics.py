@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from runtime_paths import (
+from .runtime_paths import (
     APP_BASE_DIR,
     BUNDLE_DIR,
     DATA_DIR,

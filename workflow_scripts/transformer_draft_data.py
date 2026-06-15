@@ -16,7 +16,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from runtime_paths import DATA_DIR, HERO_DETAILS_PATH, TRANSFORMER_DATA_DIR
+from backend.runtime_paths import DATA_DIR, HERO_DETAILS_PATH, TRANSFORMER_DATA_DIR
 from match_history_utils import RAW_JSONL_PATH, get_position_bucket, validate_match_record
 
 PROJECT_ROOT = _PROJECT_ROOT

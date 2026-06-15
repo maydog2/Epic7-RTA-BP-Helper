@@ -8,7 +8,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from runtime_paths import RERANKER_DATA_DIR, WORKFLOW_DIR
+from .runtime_paths import RERANKER_DATA_DIR, WORKFLOW_DIR
 
 if str(WORKFLOW_DIR) not in sys.path:
     sys.path.insert(0, str(WORKFLOW_DIR))
@@ -28,7 +28,8 @@ MIN_RESPONSE_COUNT = 3
 WEIGHT_SYNERGY = 0.48
 WEIGHT_LACK_RESPONSE = 0.40
 WEIGHT_POSITION_THREAT = 0.12
-BAN_RATE_EXPONENT = 3.0
+BAN_RATE_EXPONENT = 5.0
+BAN_RATE_RANK_WEIGHTS = (1.35, 1.0, 0.78, 0.62)
 
 RESPONSE_BUCKET_WEIGHTS: dict[str, float] = {
     "7": 0.20,
@@ -379,8 +380,9 @@ def _sort_key(recommendation: dict[str, object]) -> tuple:
 
 def _score_to_display_rates(recommendations: list[dict[str, object]]) -> list[float]:
     sharpened_scores = [
-        max(float(item["ban_score"]), 0.0) ** BAN_RATE_EXPONENT
-        for item in recommendations
+        (max(float(item["ban_score"]), 0.0) ** BAN_RATE_EXPONENT)
+        * BAN_RATE_RANK_WEIGHTS[min(index, len(BAN_RATE_RANK_WEIGHTS) - 1)]
+        for index, item in enumerate(recommendations)
     ]
     total_score = sum(sharpened_scores)
     if total_score <= 0.0:

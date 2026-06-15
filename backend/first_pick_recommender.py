@@ -9,8 +9,8 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
-from preban_recommender import get_raw_match_history_path
-from runtime_paths import FIRST_PICK_RECORDS_PATH
+from .preban_recommender import get_raw_match_history_path
+from .runtime_paths import FIRST_PICK_RECORDS_PATH
 
 FIRST_PICK_REASON = "Historical order-1 first pick with similar directional preban context."
 FALLBACK_LEVEL_WEIGHT = {
@@ -108,13 +108,13 @@ def load_first_pick_records_from_artifact() -> list[FirstPickRecord] | None:
     ]
 
 
-def load_first_pick_records() -> list[FirstPickRecord]:
-    artifact_records = load_first_pick_records_from_artifact()
-    if artifact_records is not None:
-        return artifact_records
-
+def load_first_pick_records_from_raw(
+    *,
+    raw_path: Path | None = None,
+) -> list[FirstPickRecord]:
     records: list[FirstPickRecord] = []
-    raw_path = get_raw_match_history_path()
+    if raw_path is None:
+        raw_path = get_raw_match_history_path()
     if raw_path is None:
         logging.warning("No raw match history JSONL found for first-pick recommendations")
         return records
@@ -159,6 +159,14 @@ def load_first_pick_records() -> list[FirstPickRecord]:
             )
 
     return records
+
+
+def load_first_pick_records() -> list[FirstPickRecord]:
+    artifact_records = load_first_pick_records_from_artifact()
+    if artifact_records is not None:
+        return artifact_records
+
+    return load_first_pick_records_from_raw()
 
 
 def ensure_first_pick_records_loaded() -> list[FirstPickRecord]:

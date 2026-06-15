@@ -14,18 +14,18 @@ import numpy as np
 import tensorflow as tf
 from flask import Flask, abort, jsonify, request, send_from_directory
 
-from first_pick_recommender import is_first_pick_recommendation_turn, recommend_first_pick
-from final_ban_recommender import recommend_final_bans_from_lists
-from preban_recommender import parse_first_pick_side, parse_top_k, recommend_prebans, resolve_preban_first_pick_side
-from recommendation_reranker import rerank_candidates
-from runtime_diagnostics import (
+from .first_pick_recommender import is_first_pick_recommendation_turn, recommend_first_pick
+from .final_ban_recommender import recommend_final_bans_from_lists
+from .preban_recommender import parse_first_pick_side, parse_top_k, recommend_prebans, resolve_preban_first_pick_side
+from .recommendation_reranker import rerank_candidates
+from .runtime_diagnostics import (
     build_hero_debug_payload,
     build_runtime_debug_payload,
     collect_recommend_debug,
     validate_loaded_encoders,
     validate_transformer_artifact_paths,
 )
-from runtime_paths import (
+from .runtime_paths import (
     APP_BASE_DIR,
     ELEMENT_ICON_DIR,
     FRONTEND_DIST_DIR,
@@ -447,6 +447,20 @@ def load_recommender() -> None:
     predict_next_hero(["unknown"], ["unknown"], "My Team")
 
 
+def load_final_ban_valid_heroes() -> set[str]:
+    """Hero codes eligible for final-ban scoring (full roster, not transformer vocab)."""
+    if not HERO_DETAILS_PATH.exists():
+        return set()
+
+    valid_heroes: set[str] = set()
+    with HERO_DETAILS_PATH.open(newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            code = (row.get("Hero") or "").strip()
+            if code:
+                valid_heroes.add(code)
+    return valid_heroes
+
+
 def normalize_picks(picks: list[str]) -> list[str]:
     return [pick if pick in available_heroes else "unknown" for pick in picks]
 
@@ -484,7 +498,7 @@ def final_ban_recommendation(
         first_pick_team,
         ally_preban=ally_preban,
         enemy_preban=enemy_preban,
-        valid_heroes=set(available_heroes.keys()),
+        valid_heroes=load_final_ban_valid_heroes(),
         top_k=top_k,
     )
 
@@ -606,6 +620,16 @@ def predict_next_hero_transformer(
     if transformer_model is None or transformer_encoders is None:
         raise RuntimeError("Transformer recommender is not loaded")
 
+    if len(user_team_picks) >= 5 and len(enemy_team_picks) >= 5:
+        return final_ban_recommendation(
+            user_team_picks=list(user_team_picks),
+            enemy_team_picks=list(enemy_team_picks),
+            first_pick_team=first_pick_team,
+            ally_preban=ally_preban,
+            enemy_preban=enemy_preban,
+            top_k=4,
+        )
+
     user_team_picks = normalize_picks(user_team_picks)
     enemy_team_picks = normalize_picks(enemy_team_picks)
     ally_preban = normalize_picks(ally_preban or [])
@@ -663,16 +687,6 @@ def predict_next_hero_transformer(
     )
     top_10_heroes = reranked["top_10_heroes"]
     top_10_rates = reranked["top_10_rates"]
-
-    if len(user_team_picks) >= 5 and len(enemy_team_picks) >= 5:
-        return final_ban_recommendation(
-            user_team_picks=user_team_picks,
-            enemy_team_picks=enemy_team_picks,
-            first_pick_team=first_pick_team,
-            ally_preban=ally_preban,
-            enemy_preban=enemy_preban,
-            top_k=4,
-        )
 
     pick_payload: dict[str, object] = {
         "top_10_heroes": top_10_heroes,

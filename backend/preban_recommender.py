@@ -8,7 +8,7 @@ import pickle
 from collections import Counter
 from pathlib import Path
 
-from runtime_paths import PREBAN_STATS_PATH, RAW_MATCH_HISTORY_PATH
+from .runtime_paths import PREBAN_STATS_PATH, RAW_MATCH_HISTORY_PATH
 
 PREBAN_REASON_COMBINED = "High preban frequency in historical RTA matches."
 PREBAN_REASON_ALLY = "Often prebanned on your side in historical RTA matches."
@@ -85,14 +85,14 @@ def _empty_context_counters() -> dict[str, Counter[str]]:
     return {"ally": Counter(), "enemy": Counter()}
 
 
-def load_preban_counts() -> tuple[dict[str, dict[str, Counter[str]]], dict[str, Counter[str]]]:
-    artifact_counts = load_preban_counts_from_artifact()
-    if artifact_counts is not None:
-        return artifact_counts
-
+def load_preban_counts_from_raw(
+    *,
+    raw_path: Path | None = None,
+) -> tuple[dict[str, dict[str, Counter[str]]], dict[str, Counter[str]]]:
     by_context = {"ally": _empty_context_counters(), "enemy": _empty_context_counters()}
     combined = _empty_context_counters()
-    raw_path = get_raw_match_history_path()
+    if raw_path is None:
+        raw_path = get_raw_match_history_path()
     if raw_path is None:
         logging.warning("No raw match history JSONL found for preban recommendations")
         return by_context, combined
@@ -121,6 +121,14 @@ def load_preban_counts() -> tuple[dict[str, dict[str, Counter[str]]], dict[str, 
                 combined[ban_side].update(codes)
 
     return by_context, combined
+
+
+def load_preban_counts() -> tuple[dict[str, dict[str, Counter[str]]], dict[str, Counter[str]]]:
+    artifact_counts = load_preban_counts_from_artifact()
+    if artifact_counts is not None:
+        return artifact_counts
+
+    return load_preban_counts_from_raw()
 
 
 def ensure_preban_counts_loaded() -> tuple[dict[str, dict[str, Counter[str]]], dict[str, Counter[str]]]:

@@ -24,7 +24,9 @@ type CurrentDraftStep = {
 
 const MAX_TEAM_SIZE = 5;
 const MAX_PREBAN_SIZE = 4;
-const PREBAN_SUGGESTION_POOL_SIZE = 11;
+const PREBAN_SUGGESTION_DISPLAY_SIZE = 10;
+/** Fetch one extra so a picked suggestion can be replaced without refetching. */
+const PREBAN_SUGGESTION_POOL_SIZE = PREBAN_SUGGESTION_DISPLAY_SIZE + 1;
 const WARFARE_RULE_OPTIONS: WarfareRule[] = ["ANY", "Support", "Offense", "Defense", "Resistance"];
 /** Pick slot index 2 = third lock; cannot be chosen as ban target */
 const BAN_PROTECTED_SLOT_INDEX = 2;
@@ -48,6 +50,14 @@ function extractUserPrebans(prebanPicks: DraftPick[]): DraftPick[] {
   return prebanPicks.filter((pick) => pick.team === "user");
 }
 
+function extractEnemyPrebans(prebanPicks: DraftPick[]): DraftPick[] {
+  return prebanPicks.filter((pick) => pick.team === "enemy");
+}
+
+function mergePrebanPicks(allyPrebans: DraftPick[], enemyPrebans: DraftPick[]): DraftPick[] {
+  return [...allyPrebans, ...enemyPrebans];
+}
+
 function prebanPicksFromUserPresets(userPresets: DraftPick[]): DraftPick[] {
   return userPresets.map((pick) => ({ team: "user" as const, code: pick.code }));
 }
@@ -57,6 +67,12 @@ const PREBAN_ORDER: Team[] = ["user", "user", "enemy", "enemy"];
 
 const ELEMENT_FILTER_ORDER = ["fire", "ice", "earth", "light", "dark"] as const;
 const ROLE_FILTER_ORDER = ["warrior", "knight", "mage", "ranger", "assassin", "manauser"] as const;
+const BAN_PRIORITY_LABEL_KEYS: MessageKey[] = [
+  "banPriorityTop",
+  "banPriorityHigh",
+  "banPriorityMedium",
+  "banPriorityLow",
+];
 
 function sortByPredefinedOrder<T extends string>(values: Iterable<T>, order: readonly T[]): T[] {
   const orderIndex = new Map(order.map((value, index) => [value, index]));
@@ -64,6 +80,10 @@ function sortByPredefinedOrder<T extends string>(values: Iterable<T>, order: rea
     (left, right) =>
       (orderIndex.get(left) ?? Number.MAX_SAFE_INTEGER) - (orderIndex.get(right) ?? Number.MAX_SAFE_INTEGER),
   );
+}
+
+function banPriorityLabelKey(index: number): MessageKey {
+  return BAN_PRIORITY_LABEL_KEYS[Math.min(index, BAN_PRIORITY_LABEL_KEYS.length - 1)];
 }
 
 /** Same hero may appear on ally preban and enemy preban; only block duplicate on the side that is picking next. */
@@ -112,6 +132,76 @@ function PickBanOverlay(props: { label: string }) {
   );
 }
 
+type CompactMenuOption<T extends string> = {
+  value: T;
+  label: string;
+  iconUrl?: string;
+};
+
+function CompactMenu<T extends string>(props: {
+  ariaLabel: string;
+  value: T;
+  options: CompactMenuOption<T>[];
+  open: boolean;
+  buttonClassName?: string;
+  menuClassName?: string;
+  iconOnly?: boolean;
+  onToggle: () => void;
+  onSelect: (value: T) => void;
+}) {
+  const selectedOption = props.options.find((option) => option.value === props.value);
+  return (
+    <>
+      <button
+        type="button"
+        className={props.buttonClassName ?? "compact-menu-button"}
+        aria-haspopup="menu"
+        aria-expanded={props.open}
+        aria-label={props.ariaLabel}
+        onClick={props.onToggle}
+      >
+        <span>
+          {selectedOption?.iconUrl ? (
+            <img
+              className="compact-menu-icon"
+              src={selectedOption.iconUrl}
+              alt={props.iconOnly ? selectedOption.label : ""}
+              aria-hidden={props.iconOnly ? undefined : "true"}
+            />
+          ) : null}
+          {props.iconOnly && selectedOption?.iconUrl ? null : selectedOption?.label ?? props.value}
+        </span>
+        <span aria-hidden="true">▾</span>
+      </button>
+      {props.open && (
+        <div className={props.menuClassName ?? "compact-menu"} role="menu">
+          {props.options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              role="menuitemradio"
+              aria-checked={props.value === option.value}
+              className={props.value === option.value ? "active" : ""}
+              title={props.iconOnly ? option.label : undefined}
+              onClick={() => props.onSelect(option.value)}
+            >
+              {option.iconUrl ? (
+                <img
+                  className="compact-menu-icon"
+                  src={option.iconUrl}
+                  alt={props.iconOnly ? option.label : ""}
+                  aria-hidden={props.iconOnly ? undefined : "true"}
+                />
+              ) : null}
+              {props.iconOnly && option.iconUrl ? null : option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 function HeroAvatar(props: { hero: Hero; displayName: string; size?: "small" | "large" }) {
   const [imageFailed, setImageFailed] = useState(!props.hero.avatar_url);
   const initials = props.displayName
@@ -135,7 +225,6 @@ function HeroAvatar(props: { hero: Hero; displayName: string; size?: "small" | "
       src={props.hero.avatar_url}
       alt={props.displayName}
       title={props.displayName}
-      loading="lazy"
       onError={() => setImageFailed(true)}
     />
   );
@@ -210,11 +299,14 @@ function DraftPanel(props: {
   language: AppLanguage;
   canUndo: boolean;
   onUndo: () => void;
+  canReset: boolean;
+  onReset: () => void;
   selectedBanCodes: Set<string>;
   currentDraftStep: CurrentDraftStep;
   labels: {
     draft: string;
     undo: string;
+    resetDraft: string;
     preban: string;
     pick: string;
     ally: string;
@@ -232,9 +324,14 @@ function DraftPanel(props: {
         <div>
           <h2>{props.labels.draft}</h2>
         </div>
-        <button type="button" className="panel-link-button" onClick={props.onUndo} disabled={!props.canUndo}>
-          {props.labels.undo}
-        </button>
+        <div className="draft-heading-actions">
+          <button type="button" className="panel-link-button" onClick={props.onReset} disabled={!props.canReset}>
+            {props.labels.resetDraft}
+          </button>
+          <button type="button" className="panel-link-button" onClick={props.onUndo} disabled={!props.canUndo}>
+            {props.labels.undo}
+          </button>
+        </div>
       </div>
       <div className="preban-section">
         <span>{props.labels.preban}</span>
@@ -348,6 +445,11 @@ export default function App() {
   const [searchText, setSearchText] = useState("");
   const [firstPickTeam, setFirstPickTeam] = useState<FirstPickTeam>("My Team");
   const [warfareRule, setWarfareRule] = useState<WarfareRule>("ANY");
+  const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
+  const [firstPickMenuOpen, setFirstPickMenuOpen] = useState(false);
+  const [warfareMenuOpen, setWarfareMenuOpen] = useState(false);
+  const [elementMenuOpen, setElementMenuOpen] = useState(false);
+  const [roleMenuOpen, setRoleMenuOpen] = useState(false);
   const [rememberPreban, setRememberPreban] = useState(false);
   const [prebanMemoryMode, setPrebanMemoryMode] = useState<PrebanMemoryMode>("shared");
   const [allyPrebanPresets, setAllyPrebanPresets] = useState<AllyPrebanPresets>(() => ({
@@ -377,6 +479,7 @@ export default function App() {
     () => ({
       draft: t(language, "draft"),
       undo: t(language, "undo"),
+      resetDraft: t(language, "resetDraft"),
       preban: t(language, "preban"),
       pick: t(language, "pick"),
       ally: t(language, "ally"),
@@ -549,9 +652,9 @@ export default function App() {
         .filter((code) => originalCodeSet.has(code)),
     );
 
-    const recommendations = (prebanSuggestionsCache.recommendations ?? []).filter(
-      (item) => !pickedFromSuggestions.has(item.hero_id),
-    );
+    const recommendations = (prebanSuggestionsCache.recommendations ?? [])
+      .filter((item) => !pickedFromSuggestions.has(item.hero_id))
+      .slice(0, PREBAN_SUGGESTION_DISPLAY_SIZE);
 
     return {
       ...prebanSuggestionsCache,
@@ -687,6 +790,58 @@ export default function App() {
     setDraftPicks((current) => [...current, { team: nextPickTeam, code }]);
   }
 
+  function applyDraftStateChange(
+    nextFirstPickTeam: FirstPickTeam,
+    options: { preserveEnemyPrebans: boolean },
+  ) {
+    const enemyPrebans = options.preserveEnemyPrebans ? extractEnemyPrebans(prebanPicks) : [];
+
+    if (rememberPreban && prebanMemoryMode === "split") {
+      const currentUserPrebans = extractUserPrebans(prebanPicks);
+      const updatedPresets: AllyPrebanPresets = {
+        ...allyPrebanPresets,
+        [firstPickTeam]: currentUserPrebans,
+      };
+      setAllyPrebanPresets(updatedPresets);
+      const allyPrebans = prebanPicksFromUserPresets(updatedPresets[nextFirstPickTeam]);
+      setPrebanPicks(mergePrebanPicks(allyPrebans, enemyPrebans));
+    } else if (rememberPreban) {
+      const allyPrebans = extractUserPrebans(prebanPicks);
+      setPrebanPicks(mergePrebanPicks(allyPrebans, enemyPrebans));
+    } else {
+      setPrebanPicks(enemyPrebans);
+    }
+
+    setFirstPickTeam(nextFirstPickTeam);
+    setDraftPicks([]);
+    setSelectedBanCode(null);
+    setPrebanSuggestionsCache(null);
+  }
+
+  function switchFirstPickTeam(nextFirstPickTeam: FirstPickTeam) {
+    if (nextFirstPickTeam === firstPickTeam) {
+      return;
+    }
+    applyDraftStateChange(nextFirstPickTeam, { preserveEnemyPrebans: true });
+  }
+
+  function resetDraft(nextFirstPickTeam: FirstPickTeam) {
+    applyDraftStateChange(nextFirstPickTeam, { preserveEnemyPrebans: false });
+  }
+
+  function resetCurrentDraft() {
+    setSelectedBanCode(null);
+    resetDraft(firstPickTeam);
+  }
+
+  function handleFirstPickTeamSelect(nextFirstPickTeam: FirstPickTeam) {
+    if (nextFirstPickTeam === firstPickTeam) {
+      resetCurrentDraft();
+      return;
+    }
+    switchFirstPickTeam(nextFirstPickTeam);
+  }
+
   function undoLastPick() {
     if (selectedBanCode != null) {
       setSelectedBanCode(null);
@@ -701,36 +856,6 @@ export default function App() {
     setPrebanPicks((current) => current.slice(0, -1));
   }
 
-  function resetDraft(nextFirstPickTeam: FirstPickTeam) {
-    if (rememberPreban && prebanMemoryMode === "split") {
-      const currentUserPrebans = extractUserPrebans(prebanPicks);
-      const updatedPresets: AllyPrebanPresets = {
-        ...allyPrebanPresets,
-        [firstPickTeam]: currentUserPrebans,
-      };
-      setAllyPrebanPresets(updatedPresets);
-      setPrebanPicks(prebanPicksFromUserPresets(updatedPresets[nextFirstPickTeam]));
-    } else if (rememberPreban) {
-      setPrebanPicks((current) => current.filter((pick) => pick.team === "user"));
-    } else {
-      setPrebanPicks([]);
-    }
-
-    setFirstPickTeam(nextFirstPickTeam);
-    setDraftPicks([]);
-    setPrebanSuggestionsCache(null);
-  }
-
-  function toggleRememberPreban() {
-    setRememberPreban((current) => {
-      const next = !current;
-      if (!next) {
-        setPrebanMemoryMode("shared");
-      }
-      return next;
-    });
-  }
-
   function choosePrebanMemoryMode(nextMode: PrebanMemoryMode) {
     if (nextMode === "split") {
       const currentUserPrebans = extractUserPrebans(prebanPicks);
@@ -740,6 +865,14 @@ export default function App() {
       }));
     }
     setPrebanMemoryMode(nextMode);
+  }
+
+  function toggleMobileMenu(menu: "language" | "firstPick" | "warfare" | "element" | "role") {
+    setLanguageMenuOpen((open) => (menu === "language" ? !open : false));
+    setFirstPickMenuOpen((open) => (menu === "firstPick" ? !open : false));
+    setWarfareMenuOpen((open) => (menu === "warfare" ? !open : false));
+    setElementMenuOpen((open) => (menu === "element" ? !open : false));
+    setRoleMenuOpen((open) => (menu === "role" ? !open : false));
   }
 
   return (
@@ -766,6 +899,22 @@ export default function App() {
               >
                 {t(language, "languageEn")}
               </button>
+              <div className="language-menu-mobile">
+                <CompactMenu
+                  ariaLabel={t(language, "language")}
+                  value={language}
+                  options={[
+                    { value: "zh", label: t(language, "languageZh") },
+                    { value: "en", label: t(language, "languageEn") },
+                  ]}
+                  open={languageMenuOpen}
+                  onToggle={() => toggleMobileMenu("language")}
+                  onSelect={(nextLanguage) => {
+                    changeLanguage(nextLanguage);
+                    setLanguageMenuOpen(false);
+                  }}
+                />
+              </div>
             </div>
           </div>
           <div className="first-pick-controls">
@@ -773,7 +922,7 @@ export default function App() {
               type="button"
               className={firstPickTeam === "My Team" ? "active" : ""}
               onClick={() => {
-                resetDraft("My Team");
+                handleFirstPickTeamSelect("My Team");
               }}
             >
               {t(language, "allyFirst")}
@@ -782,37 +931,97 @@ export default function App() {
               type="button"
               className={firstPickTeam === "Enemy Team" ? "active" : ""}
               onClick={() => {
-                resetDraft("Enemy Team");
+                handleFirstPickTeamSelect("Enemy Team");
               }}
             >
               {t(language, "enemyFirst")}
             </button>
+            <div className="first-pick-menu-mobile">
+              <span>{t(language, "firstPick")}</span>
+              <div className="first-pick-menu-control">
+                <CompactMenu
+                  ariaLabel={t(language, "firstPick")}
+                  value={firstPickTeam}
+                  options={[
+                    { value: "My Team", label: t(language, "ally") },
+                    { value: "Enemy Team", label: t(language, "enemy") },
+                  ]}
+                  open={firstPickMenuOpen}
+                  onToggle={() => toggleMobileMenu("firstPick")}
+                  onSelect={(nextFirstPickTeam) => {
+                    handleFirstPickTeamSelect(nextFirstPickTeam);
+                    setFirstPickMenuOpen(false);
+                  }}
+                />
+              </div>
+            </div>
             <div className="preban-settings">
-              <button
-                type="button"
-                className={`preban-button${rememberPreban ? " active" : ""}`}
-                onClick={toggleRememberPreban}
-              >
-                {t(language, "rememberPreban")}
-              </button>
-              {rememberPreban && (
-                <div className="preban-memory-options" role="group" aria-label={t(language, "rememberPreban")}>
+              <div className="preban-toggle-row desktop-preban-toggle">
+                <span className="preban-toggle-label">{t(language, "rememberPreban")}</span>
+                <div className="preban-toggle-options" role="group" aria-label={t(language, "rememberPreban")}>
                   <button
                     type="button"
-                    className={prebanMemoryMode === "shared" ? "active" : ""}
-                    onClick={() => choosePrebanMemoryMode("shared")}
+                    className={rememberPreban ? "active" : ""}
+                    onClick={() => setRememberPreban(true)}
                   >
-                    {t(language, "sharedPrebans")}
+                    {t(language, "toggleOn")}
                   </button>
                   <button
                     type="button"
-                    className={prebanMemoryMode === "split" ? "active" : ""}
-                    onClick={() => choosePrebanMemoryMode("split")}
+                    className={!rememberPreban ? "active" : ""}
+                    onClick={() => {
+                      setRememberPreban(false);
+                      setPrebanMemoryMode("shared");
+                    }}
                   >
-                    {t(language, "splitPrebanByFirstPick")}
+                    {t(language, "toggleOff")}
                   </button>
                 </div>
-              )}
+              </div>
+              <div className="preban-toggle-row mobile-preban-toggle">
+                <span className="preban-toggle-label">{t(language, "rememberPreban")}</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={rememberPreban}
+                  aria-label={t(language, "rememberPreban")}
+                  className={`ios-switch${rememberPreban ? " on" : ""}`}
+                  onClick={() => {
+                    setRememberPreban((current) => {
+                      const next = !current;
+                      if (!next) {
+                        setPrebanMemoryMode("shared");
+                      }
+                      return next;
+                    });
+                  }}
+                >
+                  <span className="ios-switch-thumb" aria-hidden="true" />
+                </button>
+              </div>
+              <div
+                className={`preban-memory-options${rememberPreban ? "" : " is-hidden"}`}
+                role="group"
+                aria-label={t(language, "rememberPreban")}
+                aria-hidden={!rememberPreban}
+              >
+                <button
+                  type="button"
+                  className={prebanMemoryMode === "shared" ? "active" : ""}
+                  disabled={!rememberPreban}
+                  onClick={() => choosePrebanMemoryMode("shared")}
+                >
+                  {t(language, "sharedPrebans")}
+                </button>
+                <button
+                  type="button"
+                  className={prebanMemoryMode === "split" ? "active" : ""}
+                  disabled={!rememberPreban}
+                  onClick={() => choosePrebanMemoryMode("split")}
+                >
+                  {t(language, "splitPrebanByFirstPick")}
+                </button>
+              </div>
             </div>
           </div>
           <div className="warfare-rule-section">
@@ -829,6 +1038,22 @@ export default function App() {
                 </button>
               ))}
             </div>
+            <div className="warfare-rule-mobile">
+              <CompactMenu
+                ariaLabel={t(language, "warfareRules")}
+                value={warfareRule}
+                options={WARFARE_RULE_OPTIONS.map((option) => ({
+                  value: option,
+                  label: t(language, `warfareRule${option}` as MessageKey),
+                }))}
+                open={warfareMenuOpen}
+                onToggle={() => toggleMobileMenu("warfare")}
+                onSelect={(nextWarfareRule) => {
+                  setWarfareRule(nextWarfareRule);
+                  setWarfareMenuOpen(false);
+                }}
+              />
+            </div>
           </div>
         </section>
 
@@ -840,6 +1065,8 @@ export default function App() {
           heroLookup={heroLookup}
           heroByCode={heroByCode}
           language={language}
+          canReset={selectedBanCode != null || prebanPicks.length > 0 || draftPicks.length > 0}
+          onReset={resetCurrentDraft}
           canUndo={selectedBanCode != null || prebanPicks.length > 0 || draftPicks.length > 0}
           onUndo={undoLastPick}
           selectedBanCodes={selectedBanSet}
@@ -868,7 +1095,7 @@ export default function App() {
               onChange={(event) => setSearchText(event.target.value)}
               placeholder={t(language, "searchHero")}
             />
-            <div className="icon-filter-group" aria-label={t(language, "elementFilters")}>
+            <div className="icon-filter-group filter-group-desktop" aria-label={t(language, "elementFilters")}>
               <button
                 type="button"
                 className={elementFilter === "all" ? "active" : ""}
@@ -890,7 +1117,7 @@ export default function App() {
                 </button>
               ))}
             </div>
-            <div className="icon-filter-group" aria-label={t(language, "roleFilters")}>
+            <div className="icon-filter-group filter-group-desktop" aria-label={t(language, "roleFilters")}>
               <button
                 type="button"
                 className={roleFilter === "all" ? "active" : ""}
@@ -909,6 +1136,50 @@ export default function App() {
                   {role.iconUrl ? <img src={role.iconUrl} alt={role.label} /> : role.label}
                 </button>
               ))}
+            </div>
+            <div className="filter-menu-row">
+              <div className="filter-menu-mobile">
+                <CompactMenu
+                  ariaLabel={t(language, "elementFilters")}
+                  value={elementFilter}
+                  options={[
+                    { value: "all", label: t(language, "all") },
+                    ...elementOptions.map((element) => ({
+                      value: element.value,
+                      label: element.label,
+                      iconUrl: element.iconUrl,
+                    })),
+                  ]}
+                  iconOnly
+                  open={elementMenuOpen}
+                  onToggle={() => toggleMobileMenu("element")}
+                  onSelect={(nextElement) => {
+                    setElementFilter(nextElement);
+                    setElementMenuOpen(false);
+                  }}
+                />
+              </div>
+              <div className="filter-menu-mobile">
+                <CompactMenu
+                  ariaLabel={t(language, "roleFilters")}
+                  value={roleFilter}
+                  options={[
+                    { value: "all", label: t(language, "all") },
+                    ...roleOptions.map((role) => ({
+                      value: role.value,
+                      label: role.label,
+                      iconUrl: role.iconUrl,
+                    })),
+                  ]}
+                  iconOnly
+                  open={roleMenuOpen}
+                  onToggle={() => toggleMobileMenu("role")}
+                  onSelect={(nextRole) => {
+                    setRoleFilter(nextRole);
+                    setRoleMenuOpen(false);
+                  }}
+                />
+              </div>
             </div>
           </div>
 
@@ -1032,7 +1303,16 @@ export default function App() {
                       ) : (
                         <span className="avatar-fallback small">?</span>
                       )}
-                      {!hidePrebanPct ? <span className="ai-recommend-pct">{rateLabel}</span> : null}
+                      {!hidePrebanPct ? (
+                        <span className="ai-recommend-meta">
+                          <span className="ai-recommend-pct">{rateLabel}</span>
+                          {banPhase ? (
+                            <span className={`ban-priority-label rank-${Math.min(index + 1, 4)}`}>
+                              {t(language, banPriorityLabelKey(index))}
+                            </span>
+                          ) : null}
+                        </span>
+                      ) : null}
                     </button>
                   );
                 })}

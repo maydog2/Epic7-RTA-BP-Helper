@@ -1,6 +1,6 @@
 # Hero Portrait Assets
 
-Portrait and icon assets for the React frontend are served by `recommender_service.py`.
+Portrait and icon assets for the React frontend are served by `backend/recommender_service.py`.
 
 ## Downloading Portraits
 

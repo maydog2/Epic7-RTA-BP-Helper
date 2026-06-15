@@ -8,7 +8,7 @@ This folder contains the migrated recommendation model from `E7-RTA-Helper`.
 - `data/transformer/rec_variables.pkl`: Transformer encoders and metadata.
 - `data/epic7_match_history_raw.jsonl`: raw scraped match history (source of truth for training, reranker stats, and preban/first-pick recommenders).
 - `data/hero_details.csv`: hero code, `name`, `name_zh`, `Role`, `Element`, and `appearance_count` for the Hero Picker and Transformer metadata.
-- `recommender_service.py`: standalone Flask service for Transformer inference.
+- `backend/recommender_service.py`: standalone Flask service for Transformer inference.
 - `workflow_scripts/get_rec_transformer_model.py`: Transformer training script.
 - `workflow_scripts/build_transformer_draft_dataset.py`: builds Transformer NPZ datasets from raw match history.
 - `workflow_scripts/evaluate_draft_models.py`: offline Transformer evaluation.
@@ -19,8 +19,10 @@ This folder contains the migrated recommendation model from `E7-RTA-Helper`.
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-recommender.txt
+# Optional local scraping / packaging tooling:
+.\.venv\Scripts\python.exe -m pip install -r requirements-local.txt
 $env:RECOMMENDER_RERANKER='true'
-.\.venv\Scripts\python.exe recommender_service.py
+.\.venv\Scripts\python.exe -m backend.recommender_service
 ```
 
 The service writes its selected local port to `recommender_service_port.txt`.

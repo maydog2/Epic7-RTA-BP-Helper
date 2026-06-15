@@ -17,10 +17,10 @@ export type Hero = {
 
 export type RecommendationResponse = {
   top_10_heroes: string[];
-  /** Pick phase: softmax×100 = model % for next lock. Ban phase: renorm among enemy picks. Preban: % share of all historical pre-ban occurrences (heroes sum to ~100% across full data). */
+  /** Pick phase: softmax×100 = model % for next lock. Ban phase: sharpened relative priority among enemy picks. Preban: % share of all historical pre-ban occurrences (heroes sum to ~100% across full data). */
   top_10_rates?: number[];
   recommendations?: PrebanRecommendation[];
-  /** After both teams lock 5: ranked enemy bans; rates renorm softmax among enemy picks only (~100%). */
+  /** After both teams lock 5: ranked enemy bans; rates are display priority among enemy picks only (~100%). */
   phase?: "preban" | "pick" | "ban";
 };
 

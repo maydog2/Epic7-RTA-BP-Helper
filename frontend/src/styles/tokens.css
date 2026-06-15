@@ -1,0 +1,89 @@
+﻿/* Shared design tokens, resets, and base element styles. */
+
+:root {
+  --layout-min-width: 560px;
+  --bg-main: #0d1322;
+  --bg-gradient-top: #151d31;
+  --bg-gradient-bottom: #0a1020;
+  --panel-bg: rgba(22, 32, 52, 0.94);
+  --card-bg: rgba(18, 27, 45, 0.94);
+  --card-bg-soft: rgba(24, 36, 58, 0.95);
+  --border-soft: rgba(148, 163, 184, 0.16);
+  --border-strong: rgba(244, 185, 66, 0.35);
+  --text-main: #f4f7ff;
+  --text-muted: #9aa8c7;
+  --gold: #f4b942;
+  --gold-bright: #ffd166;
+  --primary: var(--gold);
+  --primary-hover: var(--gold-bright);
+  --secondary: #7c5cff;
+  --accent-blue: #4f8cff;
+  --danger: #ef6b5b;
+  --success: #55d6a7;
+  --border-soft-mid: rgba(148, 163, 184, 0.22);
+  --border-soft-strong: rgba(148, 163, 184, 0.28);
+  --active-bg: linear-gradient(180deg, rgba(244, 185, 66, 0.22), rgba(244, 185, 66, 0.1));
+  --active-border: rgba(244, 185, 66, 0.7);
+  --primary-12: rgba(244, 185, 66, 0.12);
+  --primary-18: rgba(244, 185, 66, 0.18);
+  --primary-28: rgba(244, 185, 66, 0.28);
+  --primary-45: rgba(244, 185, 66, 0.45);
+  --accent-blue-10: rgba(79, 140, 255, 0.1);
+  --accent-blue-18: rgba(79, 140, 255, 0.18);
+  --accent-blue-35: rgba(79, 140, 255, 0.35);
+  --danger-10: rgba(239, 107, 91, 0.1);
+  --danger-18: rgba(239, 107, 91, 0.18);
+  --danger-45: rgba(239, 107, 91, 0.45);
+  --success-12: rgba(85, 214, 167, 0.12);
+  --success-35: rgba(85, 214, 167, 0.35);
+  --secondary-14: rgba(124, 92, 255, 0.14);
+  --panel-shadow: 0 14px 42px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  --panel-shadow-hero: 0 18px 52px rgba(0, 0, 0, 0.48), 0 0 0 1px rgba(148, 163, 184, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --avatar-shadow: 0 6px 18px rgba(0, 0, 0, 0.42);
+  --avatar-ring: rgba(244, 247, 255, 0.14);
+  color: var(--text-main);
+  background: var(--bg-main);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  overflow-x: auto;
+}
+
+body {
+  margin: 0;
+  min-width: var(--layout-min-width);
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top, rgba(79, 140, 255, 0.08), transparent 34rem),
+    linear-gradient(180deg, var(--bg-gradient-top) 0%, var(--bg-gradient-bottom) 100%);
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}

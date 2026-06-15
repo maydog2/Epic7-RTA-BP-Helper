@@ -8,7 +8,7 @@ services:
     region: singapore
     buildCommand: pip install -r requirements-recommender.txt
     startCommand: >-
-      gunicorn recommender_service:app
+      gunicorn backend.recommender_service:app
       --bind 0.0.0.0:$PORT
       --workers 1
       --threads 2

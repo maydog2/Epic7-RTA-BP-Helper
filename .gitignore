@@ -40,16 +40,17 @@ build/
 dist/
 *.spec
 build_exe.ps1
-launcher.py
-requirements-packaging.txt
+/launcher.py
+
+# --- Android 本地壳（不进 GitHub；资源由 export 脚本生成）---
+E7_BP_Helper_Android/
 
 # --- 个人笔记 / 本地草稿 ---
-近期计划.txt
 小本本.md
 README_SCRAPERS.md
 
-# --- 爬虫 / 训练依赖（Render 用 requirements-recommender.txt）---
-requirements-scraping.txt
+# --- 本地爬虫 / 打包依赖（Render 用 requirements-recommender.txt）---
+requirements-local.txt
 
 # --- data: 只保留线上推理所需 ---
 data/debug/
@@ -83,9 +84,6 @@ workflow_scripts/generate_*.py
 workflow_scripts/build_transformer_draft_dataset.py
 workflow_scripts/evaluate_draft_models.py
 workflow_scripts/update_hero_details_appearance_stats.py
+workflow_scripts/update_hero_names.py
 workflow_scripts/hero_details_*.py
-workflow_scripts/dump_hero_appearances.py
-workflow_scripts/debug_reco_once.py
-workflow_scripts/test_*.py
-workflow_scripts/*.ps1
 workflow_scripts/tf_requirements.txt

@@ -14,14 +14,14 @@ def get_bundle_dir() -> Path:
     """Directory containing read-only bundled resources."""
     if is_frozen():
         return Path(getattr(sys, "_MEIPASS"))
-    return Path(__file__).resolve().parent
+    return Path(__file__).resolve().parent.parent
 
 
 def get_app_base_dir() -> Path:
     """Directory for writable runtime files such as logs."""
     if is_frozen():
         return Path(sys.executable).resolve().parent
-    return Path(__file__).resolve().parent
+    return Path(__file__).resolve().parent.parent
 
 
 def resource_path(*parts: str) -> Path:
