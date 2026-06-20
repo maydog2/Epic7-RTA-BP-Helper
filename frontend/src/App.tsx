@@ -321,17 +321,20 @@ function DraftPanel(props: {
   return (
     <section className="draft-panel">
       <div className="panel-heading draft-heading">
-        <div>
+        <div className="draft-heading-start">
           <h2>{props.labels.draft}</h2>
-        </div>
-        <div className="draft-heading-actions">
-          <button type="button" className="panel-link-button" onClick={props.onReset} disabled={!props.canReset}>
+          <button
+            type="button"
+            className="panel-link-button draft-reset-button"
+            onClick={props.onReset}
+            disabled={!props.canReset}
+          >
             {props.labels.resetDraft}
           </button>
-          <button type="button" className="panel-link-button" onClick={props.onUndo} disabled={!props.canUndo}>
-            {props.labels.undo}
-          </button>
         </div>
+        <button type="button" className="panel-link-button" onClick={props.onUndo} disabled={!props.canUndo}>
+          {props.labels.undo}
+        </button>
       </div>
       <div className="preban-section">
         <span>{props.labels.preban}</span>
@@ -1025,7 +1028,21 @@ export default function App() {
             </div>
           </div>
           <div className="warfare-rule-section">
-            <span className="warfare-rule-label">{t(language, "warfareRules")}</span>
+            <div className="warfare-rule-label-row">
+              <span className="warfare-rule-label">{t(language, "warfareRules")}</span>
+              <span
+                className="help-tooltip"
+                tabIndex={0}
+                aria-label={t(language, "warfareRulesHelp")}
+              >
+                <span className="help-tooltip-icon" aria-hidden="true">
+                  ?
+                </span>
+                <span className="help-tooltip-content" role="tooltip">
+                  {t(language, "warfareRulesHelp")}
+                </span>
+              </span>
+            </div>
             <div className="warfare-rule-controls" role="group" aria-label={t(language, "warfareRules")}>
               {WARFARE_RULE_OPTIONS.map((option) => (
                 <button

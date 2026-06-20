@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import pickle
-import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
@@ -25,10 +24,6 @@ from update_hero_details_appearance_stats import (  # noqa: E402
 )
 
 
-GET_HERO_DESCRIPTION_SCRIPT = PROJECT_ROOT / "workflow_scripts" / "get_hero_description.py"
-GET_CHARACTER_IDS_SCRIPT = PROJECT_ROOT / "workflow_scripts" / "get_character_ids.py"
-
-
 def _counter_map(counter: Counter[str]) -> dict[str, int]:
     return dict(counter)
 
@@ -46,33 +41,10 @@ def _serialize_preban_counts(
     }
 
 
-def refresh_hero_registry() -> dict[str, object]:
-    """Register newly released heroes before rebuilding match-derived stats.
-
-    get_hero_description.py must run before get_character_ids.py: the description
-    scraper skips rows that already exist, while get_character_ids.py can insert
-    new rows from Stove with empty role/element fields.
-    """
-    commands = [
-        [sys.executable, str(GET_HERO_DESCRIPTION_SCRIPT)],
-        [sys.executable, str(GET_CHARACTER_IDS_SCRIPT)],
-    ]
-    for command in commands:
-        subprocess.run(command, cwd=PROJECT_ROOT, check=True)
-
-    return {
-        "hero_registration_scripts": [
-            str(GET_HERO_DESCRIPTION_SCRIPT),
-            str(GET_CHARACTER_IDS_SCRIPT),
-        ],
-    }
-
-
 def refresh_match_derived_stats(
     *,
     raw_path: Path = DEFAULT_RAW_PATH,
     hero_details_path: Path = DEFAULT_HERO_DETAILS_PATH,
-    skip_hero_registration: bool = False,
     skip_appearance: bool = False,
     skip_reranker: bool = False,
 ) -> dict[str, object]:
@@ -82,9 +54,6 @@ def refresh_match_derived_stats(
     summary: dict[str, object] = {
         "raw_path": str(raw_path),
     }
-
-    if not skip_hero_registration:
-        summary.update(refresh_hero_registry())
 
     RUNTIME_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -138,8 +107,8 @@ def refresh_match_derived_stats(
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Register new heroes, then rebuild preban/first-pick runtime artifacts, "
-            "reranker CSV stats, and hero_details appearance_count from match history JSONL."
+            "Rebuild preban/first-pick runtime artifacts, reranker CSV stats, "
+            "and hero_details appearance_count from match history JSONL."
         )
     )
     parser.add_argument(
@@ -153,11 +122,6 @@ def main() -> None:
         type=Path,
         default=DEFAULT_HERO_DETAILS_PATH,
         help=f"Hero details CSV to update (default: {DEFAULT_HERO_DETAILS_PATH})",
-    )
-    parser.add_argument(
-        "--skip-hero-registration",
-        action="store_true",
-        help="Skip get_hero_description.py and get_character_ids.py.",
     )
     parser.add_argument(
         "--skip-appearance",
@@ -175,17 +139,11 @@ def main() -> None:
         summary = refresh_match_derived_stats(
             raw_path=args.raw_path,
             hero_details_path=args.hero_details_path,
-            skip_hero_registration=args.skip_hero_registration,
             skip_appearance=args.skip_appearance,
             skip_reranker=args.skip_reranker,
         )
     except FileNotFoundError as exc:
         raise SystemExit(str(exc)) from exc
-
-    if args.skip_hero_registration:
-        print("Skipped hero registration update.")
-    else:
-        print("Updated hero registry via get_hero_description.py and get_character_ids.py")
 
     print(f"Wrote {summary['preban_stats_path']}")
     print(

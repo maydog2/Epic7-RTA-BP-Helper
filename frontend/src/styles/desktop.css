@@ -207,15 +207,23 @@ h2 {
   max-width: 100%;
 }
 
-.draft-heading-actions {
+.draft-heading-start {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.draft-heading-start h2 {
+  margin: 0;
 }
 
 .draft-heading .panel-link-button {
   margin-top: 0;
+}
+
+.draft-reset-button {
+  flex-shrink: 0;
 }
 
 .picker-row {
@@ -820,10 +828,80 @@ select:focus {
   margin-top: 16px;
 }
 
+.warfare-rule-label-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .warfare-rule-label {
   color: var(--text-muted);
   font-size: inherit;
   font-weight: 600;
+}
+
+.help-tooltip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: help;
+  outline: none;
+}
+
+.help-tooltip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--border-soft-mid);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  background: var(--panel-bg);
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.help-tooltip:hover .help-tooltip-icon,
+.help-tooltip:focus-visible .help-tooltip-icon {
+  border-color: var(--border-soft-strong);
+  color: var(--text-main);
+}
+
+.help-tooltip-content {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  z-index: 20;
+  width: max-content;
+  max-width: min(280px, 70vw);
+  padding: 10px 12px;
+  border: 1px solid var(--border-soft-mid);
+  border-radius: 12px;
+  background: var(--panel-bg);
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+  text-align: left;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, -4px);
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
+  pointer-events: none;
+}
+
+.help-tooltip:hover .help-tooltip-content,
+.help-tooltip:focus-visible .help-tooltip-content,
+.help-tooltip:focus-within .help-tooltip-content {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
 }
 
 .warfare-rule-controls {
