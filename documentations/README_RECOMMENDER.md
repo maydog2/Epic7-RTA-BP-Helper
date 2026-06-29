@@ -29,6 +29,8 @@ The service writes its selected local port to `recommender_service_port.txt`.
 
 ## API
 
+See also: [DRAFT_RECOMMENDATION_LOGIC.md](./DRAFT_RECOMMENDATION_LOGIC.md) — preban, first pick, mid-draft pick, and final ban routing (EN + 中文).
+
 Initialize explicitly:
 
 ```text

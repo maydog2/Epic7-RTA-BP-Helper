@@ -19,6 +19,10 @@ FALLBACK_LEVEL_WEIGHT = {
     3: 0.25,
     4: 0.05,
 }
+DEFAULT_INFO_WEIGHT = 0.20
+WEIGHTED_OVERLAP_THRESHOLD = 0.30
+PREBAN_INFO_SIGNAL_WEIGHT = 0.70
+FIRST_PICK_INFO_SIGNAL_WEIGHT = 0.30
 
 _first_pick_records: list[FirstPickRecord] | None = None
 
@@ -59,20 +63,102 @@ def preban_overlap(query: tuple[str, ...], candidate: tuple[str, ...]) -> float:
     return overlap / max(len(query), len(candidate))
 
 
+def lookup_info_weight(hero: str, info_weights: dict[str, float]) -> float:
+    return info_weights.get(hero, DEFAULT_INFO_WEIGHT)
+
+
+def build_first_pick_info_weights(records: list[FirstPickRecord]) -> dict[str, float]:
+    preban_count: Counter[str] = Counter()
+    order_1_count: Counter[str] = Counter()
+
+    for record in records:
+        for hero in record.first_side_preban:
+            if hero:
+                preban_count[hero] += 1
+        for hero in record.second_side_preban:
+            if hero:
+                preban_count[hero] += 1
+        if record.order_1_hero:
+            order_1_count[record.order_1_hero] += 1
+
+    max_preban_count = max(preban_count.values()) if preban_count else 0
+    max_order_1_count = max(order_1_count.values()) if order_1_count else 0
+    all_heroes = set(preban_count) | set(order_1_count)
+
+    info_weights: dict[str, float] = {}
+    for hero in all_heroes:
+        preban_score = preban_count[hero] / max_preban_count if max_preban_count > 0 else 0.0
+        first_pick_score = order_1_count[hero] / max_order_1_count if max_order_1_count > 0 else 0.0
+        raw_signal = (
+            PREBAN_INFO_SIGNAL_WEIGHT * preban_score
+            + FIRST_PICK_INFO_SIGNAL_WEIGHT * first_pick_score
+        )
+        info_weights[hero] = DEFAULT_INFO_WEIGHT + (1.0 - DEFAULT_INFO_WEIGHT) * raw_signal
+
+    return info_weights
+
+
+def _preban_tuple_total_weight(
+    preban: tuple[str, ...],
+    info_weights: dict[str, float],
+) -> float:
+    return sum(lookup_info_weight(hero, info_weights) for hero in preban)
+
+
+def weighted_preban_overlap(
+    query: tuple[str, ...],
+    candidate: tuple[str, ...],
+    info_weights: dict[str, float],
+) -> float:
+    if not query and not candidate:
+        return 1.0
+    if not query or not candidate:
+        return 0.0
+
+    matched_weight = sum(
+        lookup_info_weight(hero, info_weights)
+        for hero in set(query) & set(candidate)
+    )
+    denominator = max(
+        _preban_tuple_total_weight(query, info_weights),
+        _preban_tuple_total_weight(candidate, info_weights),
+    )
+    if denominator <= 0.0:
+        return 0.0
+    return matched_weight / denominator
+
+
 def directional_match_level(
     query_first: tuple[str, ...],
     query_second: tuple[str, ...],
     match_first: tuple[str, ...],
     match_second: tuple[str, ...],
+    info_weights: dict[str, float],
 ) -> int | None:
-    first_overlap = preban_overlap(query_first, match_first)
-    second_overlap = preban_overlap(query_second, match_second)
-
     if query_first == match_first and query_second == match_second:
         return 1
-    if query_first == match_first and second_overlap > 0.0 and query_second != match_second:
+
+    weighted_second_overlap = weighted_preban_overlap(
+        query_second,
+        match_second,
+        info_weights,
+    )
+    if (
+        query_first == match_first
+        and weighted_second_overlap >= WEIGHTED_OVERLAP_THRESHOLD
+        and query_second != match_second
+    ):
         return 2
-    if first_overlap > 0.0 and second_overlap > 0.0:
+
+    weighted_first_overlap = weighted_preban_overlap(
+        query_first,
+        match_first,
+        info_weights,
+    )
+    if (
+        weighted_first_overlap >= WEIGHTED_OVERLAP_THRESHOLD
+        and weighted_second_overlap >= WEIGHTED_OVERLAP_THRESHOLD
+    ):
         return 3
     return None
 
@@ -82,10 +168,11 @@ def directional_similarity(
     query_second: tuple[str, ...],
     match_first: tuple[str, ...],
     match_second: tuple[str, ...],
+    info_weights: dict[str, float],
 ) -> float:
     return (
-        0.6 * preban_overlap(query_first, match_first)
-        + 0.4 * preban_overlap(query_second, match_second)
+        0.6 * weighted_preban_overlap(query_first, match_first, info_weights)
+        + 0.4 * weighted_preban_overlap(query_second, match_second, info_weights)
     )
 
 
@@ -260,11 +347,9 @@ def recommend_first_pick(
             "top_10_rates": [],
         }
 
-    records = [
-        record
-        for record in ensure_first_pick_records_loaded()
-        if record.first_pick_side == first_pick_side
-    ]
+    all_records = ensure_first_pick_records_loaded()
+    info_weights = build_first_pick_info_weights(all_records)
+    records = [record for record in all_records if record.first_pick_side == first_pick_side]
     query_first, query_second = derive_directional_prebans(
         first_pick_side,
         ally_preban,
@@ -285,6 +370,7 @@ def recommend_first_pick(
                 query_second,
                 record.first_side_preban,
                 record.second_side_preban,
+                info_weights,
             )
             if match_level != level:
                 continue
@@ -293,6 +379,7 @@ def recommend_first_pick(
                 query_second,
                 record.first_side_preban,
                 record.second_side_preban,
+                info_weights,
             )
             weighted_counts[record.order_1_hero] += weight
 

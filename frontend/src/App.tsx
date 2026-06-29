@@ -1,5 +1,34 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchHeroes, fetchPrebanRecommendation, fetchRecommendation, type PrebanSide } from "./api";
+import { CompactMenu } from "./components/CompactMenu";
+import { DraftPanel } from "./components/DraftPanel";
+import { HeroAvatar } from "./components/HeroAvatar";
+import {
+  banPriorityLabelKey,
+  ELEMENT_FILTER_ORDER,
+  EMPTY_ALLY_PREBAN_PRESETS,
+  getHeroName,
+  getPickTeam,
+  isBanProtectedHero,
+  isHeroUnavailableForNextPick,
+  MAX_PREBAN_SIZE,
+  MAX_TEAM_SIZE,
+  mergePrebanPicks,
+  PICK_ORDER_PATTERN,
+  PREBAN_ORDER,
+  PREBAN_SUGGESTION_DISPLAY_SIZE,
+  PREBAN_SUGGESTION_POOL_SIZE,
+  picksByTeam,
+  prebanPicksFromUserPresets,
+  ROLE_FILTER_ORDER,
+  sortByPredefinedOrder,
+  WARFARE_RULE_OPTIONS,
+  type AllyPrebanPresets,
+  type CurrentDraftStep,
+  type DraftPick,
+  type PrebanMemoryMode,
+  type Team,
+} from "./draftLogic";
 import {
   getHeroDisplayName,
   getStoredLanguage,
@@ -13,430 +42,6 @@ import {
   type MessageKey,
 } from "./i18n";
 import type { FirstPickTeam, Hero, RecommendationResponse, WarfareRule } from "./types";
-
-type Team = "user" | "enemy";
-
-type CurrentDraftStep = {
-  phase: "preban" | "pick";
-  team: Team;
-  slotIndex: number;
-} | null;
-
-const MAX_TEAM_SIZE = 5;
-const MAX_PREBAN_SIZE = 4;
-const PREBAN_SUGGESTION_DISPLAY_SIZE = 10;
-/** Fetch one extra so a picked suggestion can be replaced without refetching. */
-const PREBAN_SUGGESTION_POOL_SIZE = PREBAN_SUGGESTION_DISPLAY_SIZE + 1;
-const WARFARE_RULE_OPTIONS: WarfareRule[] = ["ANY", "Support", "Offense", "Defense", "Resistance"];
-/** Pick slot index 2 = third lock; cannot be chosen as ban target */
-const BAN_PROTECTED_SLOT_INDEX = 2;
-const PICK_ORDER_PATTERN = ["first", "second", "second", "first", "first", "second", "second", "first", "first", "second"] as const;
-
-type DraftPick = {
-  team: Team;
-  code: string;
-};
-
-type PrebanMemoryMode = "shared" | "split";
-
-type AllyPrebanPresets = Record<FirstPickTeam, DraftPick[]>;
-
-const EMPTY_ALLY_PREBAN_PRESETS: AllyPrebanPresets = {
-  "My Team": [],
-  "Enemy Team": [],
-};
-
-function extractUserPrebans(prebanPicks: DraftPick[]): DraftPick[] {
-  return prebanPicks.filter((pick) => pick.team === "user");
-}
-
-function extractEnemyPrebans(prebanPicks: DraftPick[]): DraftPick[] {
-  return prebanPicks.filter((pick) => pick.team === "enemy");
-}
-
-function mergePrebanPicks(allyPrebans: DraftPick[], enemyPrebans: DraftPick[]): DraftPick[] {
-  return [...allyPrebans, ...enemyPrebans];
-}
-
-function prebanPicksFromUserPresets(userPresets: DraftPick[]): DraftPick[] {
-  return userPresets.map((pick) => ({ team: "user" as const, code: pick.code }));
-}
-
-/** RTA: ally always prebans first (2 slots), then enemy (2 slots), regardless of first pick. */
-const PREBAN_ORDER: Team[] = ["user", "user", "enemy", "enemy"];
-
-const ELEMENT_FILTER_ORDER = ["fire", "ice", "earth", "light", "dark"] as const;
-const ROLE_FILTER_ORDER = ["warrior", "knight", "mage", "ranger", "assassin", "manauser"] as const;
-const BAN_PRIORITY_LABEL_KEYS: MessageKey[] = [
-  "banPriorityTop",
-  "banPriorityHigh",
-  "banPriorityMedium",
-  "banPriorityLow",
-];
-
-function sortByPredefinedOrder<T extends string>(values: Iterable<T>, order: readonly T[]): T[] {
-  const orderIndex = new Map(order.map((value, index) => [value, index]));
-  return [...new Set(values)].sort(
-    (left, right) =>
-      (orderIndex.get(left) ?? Number.MAX_SAFE_INTEGER) - (orderIndex.get(right) ?? Number.MAX_SAFE_INTEGER),
-  );
-}
-
-function banPriorityLabelKey(index: number): MessageKey {
-  return BAN_PRIORITY_LABEL_KEYS[Math.min(index, BAN_PRIORITY_LABEL_KEYS.length - 1)];
-}
-
-/** Same hero may appear on ally preban and enemy preban; only block duplicate on the side that is picking next. */
-function isPrebanDuplicateForTeam(team: Team, code: string, prebanPicks: DraftPick[]): boolean {
-  return prebanPicks.some((p) => p.team === team && p.code === code);
-}
-
-function isHeroUnavailableForNextPick(
-  code: string,
-  prebanPicks: DraftPick[],
-  globallyUsed: Set<string>,
-  prebanOrder: Team[],
-): boolean {
-  if (prebanPicks.length >= MAX_PREBAN_SIZE) {
-    return globallyUsed.has(code);
-  }
-  const nextTeam = prebanOrder[prebanPicks.length];
-  return isPrebanDuplicateForTeam(nextTeam, code, prebanPicks);
-}
-
-function getHeroName(heroLookup: Map<string, Hero>, code: string, language: AppLanguage): string {
-  const hero = heroLookup.get(code);
-  return hero ? getHeroDisplayName(hero, language) : code;
-}
-
-function getPickTeam(firstPickTeam: FirstPickTeam, pickIndex: number): Team {
-  const firstTeam: Team = firstPickTeam === "My Team" ? "user" : "enemy";
-  const secondTeam: Team = firstTeam === "user" ? "enemy" : "user";
-  return PICK_ORDER_PATTERN[pickIndex] === "first" ? firstTeam : secondTeam;
-}
-
-function isBanProtectedHero(code: string, userPicks: DraftPick[], enemyPicks: DraftPick[]): boolean {
-  const ally = userPicks[BAN_PROTECTED_SLOT_INDEX];
-  const foe = enemyPicks[BAN_PROTECTED_SLOT_INDEX];
-  return Boolean((ally && ally.code === code) || (foe && foe.code === code));
-}
-
-function PickBanOverlay(props: { label: string }) {
-  return (
-    <span className="pick-slot-ban-badge" role="img" aria-label={props.label}>
-      <svg viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="9.25" stroke="currentColor" strokeWidth="2" />
-        <path d="M7 17 L17 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      </svg>
-    </span>
-  );
-}
-
-type CompactMenuOption<T extends string> = {
-  value: T;
-  label: string;
-  iconUrl?: string;
-};
-
-function CompactMenu<T extends string>(props: {
-  ariaLabel: string;
-  value: T;
-  options: CompactMenuOption<T>[];
-  open: boolean;
-  buttonClassName?: string;
-  menuClassName?: string;
-  iconOnly?: boolean;
-  onToggle: () => void;
-  onSelect: (value: T) => void;
-}) {
-  const selectedOption = props.options.find((option) => option.value === props.value);
-  return (
-    <>
-      <button
-        type="button"
-        className={props.buttonClassName ?? "compact-menu-button"}
-        aria-haspopup="menu"
-        aria-expanded={props.open}
-        aria-label={props.ariaLabel}
-        onClick={props.onToggle}
-      >
-        <span>
-          {selectedOption?.iconUrl ? (
-            <img
-              className="compact-menu-icon"
-              src={selectedOption.iconUrl}
-              alt={props.iconOnly ? selectedOption.label : ""}
-              aria-hidden={props.iconOnly ? undefined : "true"}
-            />
-          ) : null}
-          {props.iconOnly && selectedOption?.iconUrl ? null : selectedOption?.label ?? props.value}
-        </span>
-        <span aria-hidden="true">▾</span>
-      </button>
-      {props.open && (
-        <div className={props.menuClassName ?? "compact-menu"} role="menu">
-          {props.options.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              role="menuitemradio"
-              aria-checked={props.value === option.value}
-              className={props.value === option.value ? "active" : ""}
-              title={props.iconOnly ? option.label : undefined}
-              onClick={() => props.onSelect(option.value)}
-            >
-              {option.iconUrl ? (
-                <img
-                  className="compact-menu-icon"
-                  src={option.iconUrl}
-                  alt={props.iconOnly ? option.label : ""}
-                  aria-hidden={props.iconOnly ? undefined : "true"}
-                />
-              ) : null}
-              {props.iconOnly && option.iconUrl ? null : option.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </>
-  );
-}
-
-function HeroAvatar(props: { hero: Hero; displayName: string; size?: "small" | "large" }) {
-  const [imageFailed, setImageFailed] = useState(!props.hero.avatar_url);
-  const initials = props.displayName
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
-
-  if (!props.hero.avatar_url || imageFailed) {
-    return (
-      <span className={`avatar-fallback ${props.size ?? "large"}`} title={props.displayName}>
-        {initials}
-      </span>
-    );
-  }
-
-  return (
-    <img
-      className={`hero-avatar ${props.size ?? "large"}`}
-      src={props.hero.avatar_url}
-      alt={props.displayName}
-      title={props.displayName}
-      onError={() => setImageFailed(true)}
-    />
-  );
-}
-
-function TeamPanel(props: {
-  title: string;
-  team: Team;
-  picks: DraftPick[];
-  heroLookup: Map<string, Hero>;
-  heroByCode: Map<string, Hero>;
-  language: AppLanguage;
-  selectedBanCodes: Set<string>;
-  currentDraftStep: CurrentDraftStep;
-  emptySlotLabel: string;
-  bannedLabel: string;
-}) {
-  const slots = Array.from({ length: MAX_TEAM_SIZE }, (_, index) => ({
-    pick: props.picks[index],
-    isBanProtected: index === BAN_PROTECTED_SLOT_INDEX,
-    isCurrentStep:
-      props.currentDraftStep?.phase === "pick" &&
-      props.currentDraftStep.team === props.team &&
-      props.currentDraftStep.slotIndex === index,
-  }));
-
-  return (
-    <section className="team-column">
-      <div className="panel-heading">
-        <h2>{props.title}</h2>
-      </div>
-
-      <div className="pick-list">
-        {slots.map((slot, index) => {
-          const hero = slot.pick ? props.heroByCode.get(slot.pick.code) : null;
-          const showBanMark = Boolean(slot.pick && props.selectedBanCodes.has(slot.pick.code));
-          return (
-            <div
-              className={`pick-slot${slot.pick ? " filled" : ""}${slot.isBanProtected ? " ban-protected" : ""}${slot.isCurrentStep ? " current-step" : ""}`}
-              key={slot.pick?.code ?? index}
-              title={
-                slot.pick
-                  ? getHeroName(props.heroLookup, slot.pick.code, props.language)
-                  : props.emptySlotLabel
-              }
-            >
-              {hero ? (
-                <div className={`pick-slot-hero${showBanMark ? " banned" : ""}`}>
-                  <HeroAvatar
-                    hero={hero}
-                    displayName={getHeroName(props.heroLookup, slot.pick!.code, props.language)}
-                    size="small"
-                  />
-                  {showBanMark && <PickBanOverlay label={props.bannedLabel} />}
-                </div>
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function DraftPanel(props: {
-  userPrebans: DraftPick[];
-  enemyPrebans: DraftPick[];
-  userPicks: DraftPick[];
-  enemyPicks: DraftPick[];
-  heroLookup: Map<string, Hero>;
-  heroByCode: Map<string, Hero>;
-  language: AppLanguage;
-  canUndo: boolean;
-  onUndo: () => void;
-  canReset: boolean;
-  onReset: () => void;
-  selectedBanCodes: Set<string>;
-  currentDraftStep: CurrentDraftStep;
-  labels: {
-    draft: string;
-    undo: string;
-    resetDraft: string;
-    preban: string;
-    pick: string;
-    ally: string;
-    enemy: string;
-    allyPrebanSlot: string;
-    enemyPrebanSlot: string;
-    emptySlot: string;
-    banned: string;
-    allyPrebanHeading: string;
-  };
-}) {
-  return (
-    <section className="draft-panel">
-      <div className="panel-heading draft-heading">
-        <div className="draft-heading-start">
-          <h2>{props.labels.draft}</h2>
-          <button
-            type="button"
-            className="panel-link-button draft-reset-button"
-            onClick={props.onReset}
-            disabled={!props.canReset}
-          >
-            {props.labels.resetDraft}
-          </button>
-        </div>
-        <button type="button" className="panel-link-button" onClick={props.onUndo} disabled={!props.canUndo}>
-          {props.labels.undo}
-        </button>
-      </div>
-      <div className="preban-section">
-        <span>{props.labels.preban}</span>
-        <div className="preban-columns">
-          <div className="preban-column">
-            <strong>{props.labels.allyPrebanHeading}</strong>
-            <div className="preban-slots">
-              {Array.from({ length: 2 }, (_, index) => {
-                const preban = props.userPrebans[index];
-                const hero = preban ? props.heroByCode.get(preban.code) : null;
-                const isCurrentStep =
-                  props.currentDraftStep?.phase === "preban" &&
-                  props.currentDraftStep.team === "user" &&
-                  props.currentDraftStep.slotIndex === index;
-
-                return (
-                  <div
-                    className={`pick-slot preban-slot${preban ? " filled" : ""}${isCurrentStep ? " current-step" : ""}`}
-                    key={preban?.code ?? index}
-                    title={
-                      preban
-                        ? getHeroName(props.heroLookup, preban.code, props.language)
-                        : props.labels.allyPrebanSlot
-                    }
-                  >
-                    {hero && (
-                      <HeroAvatar
-                        hero={hero}
-                        displayName={getHeroName(props.heroLookup, preban.code, props.language)}
-                        size="small"
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          <div className="preban-column">
-            <strong>{props.labels.enemy}</strong>
-            <div className="preban-slots">
-              {Array.from({ length: 2 }, (_, index) => {
-                const preban = props.enemyPrebans[index];
-                const hero = preban ? props.heroByCode.get(preban.code) : null;
-                const isCurrentStep =
-                  props.currentDraftStep?.phase === "preban" &&
-                  props.currentDraftStep.team === "enemy" &&
-                  props.currentDraftStep.slotIndex === index;
-
-                return (
-                  <div
-                    className={`pick-slot preban-slot${preban ? " filled" : ""}${isCurrentStep ? " current-step" : ""}`}
-                    key={preban?.code ?? index}
-                    title={
-                      preban
-                        ? getHeroName(props.heroLookup, preban.code, props.language)
-                        : props.labels.enemyPrebanSlot
-                    }
-                  >
-                    {hero && (
-                      <HeroAvatar
-                        hero={hero}
-                        displayName={getHeroName(props.heroLookup, preban.code, props.language)}
-                        size="small"
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
-      <span className="section-label">{props.labels.pick}</span>
-      <div className="team-columns">
-        <TeamPanel
-          title={props.labels.ally}
-          team="user"
-          picks={props.userPicks}
-          heroLookup={props.heroLookup}
-          heroByCode={props.heroByCode}
-          language={props.language}
-          selectedBanCodes={props.selectedBanCodes}
-          currentDraftStep={props.currentDraftStep}
-          emptySlotLabel={props.labels.emptySlot}
-          bannedLabel={props.labels.banned}
-        />
-        <TeamPanel
-          title={props.labels.enemy}
-          team="enemy"
-          picks={props.enemyPicks}
-          heroLookup={props.heroLookup}
-          heroByCode={props.heroByCode}
-          language={props.language}
-          selectedBanCodes={props.selectedBanCodes}
-          currentDraftStep={props.currentDraftStep}
-          emptySlotLabel={props.labels.emptySlot}
-          bannedLabel={props.labels.banned}
-        />
-      </div>
-    </section>
-  );
-}
 
 export default function App() {
   const [language, setLanguage] = useState<AppLanguage>(() => getStoredLanguage());
@@ -491,22 +96,22 @@ export default function App() {
       enemyPrebanSlot: t(language, "enemyPrebanSlot"),
       emptySlot: t(language, "emptySlot"),
       banned: t(language, "banned"),
-      allyPrebanHeading:
+      allyPrebanFirstPickSuffix:
         rememberPreban && prebanMemoryMode === "split"
-          ? `${t(language, "ally")} · ${
+          ? ` · ${
               firstPickTeam === "My Team"
                 ? t(language, "allyFirstPrebans")
                 : t(language, "enemyFirstPrebans")
             }`
-          : t(language, "ally"),
+          : null,
     }),
     [firstPickTeam, language, prebanMemoryMode, rememberPreban],
   );
 
-  const userPicks = useMemo(() => draftPicks.filter((pick) => pick.team === "user"), [draftPicks]);
-  const enemyPicks = useMemo(() => draftPicks.filter((pick) => pick.team === "enemy"), [draftPicks]);
-  const userPrebans = useMemo(() => prebanPicks.filter((pick) => pick.team === "user"), [prebanPicks]);
-  const enemyPrebans = useMemo(() => prebanPicks.filter((pick) => pick.team === "enemy"), [prebanPicks]);
+  const userPicks = useMemo(() => picksByTeam(draftPicks, "user"), [draftPicks]);
+  const enemyPicks = useMemo(() => picksByTeam(draftPicks, "enemy"), [draftPicks]);
+  const userPrebans = useMemo(() => picksByTeam(prebanPicks, "user"), [prebanPicks]);
+  const enemyPrebans = useMemo(() => picksByTeam(prebanPicks, "enemy"), [prebanPicks]);
 
   const sortedHeroes = useMemo(
     () =>
@@ -797,10 +402,10 @@ export default function App() {
     nextFirstPickTeam: FirstPickTeam,
     options: { preserveEnemyPrebans: boolean },
   ) {
-    const enemyPrebans = options.preserveEnemyPrebans ? extractEnemyPrebans(prebanPicks) : [];
+    const enemyPrebans = options.preserveEnemyPrebans ? picksByTeam(prebanPicks, "enemy") : [];
 
     if (rememberPreban && prebanMemoryMode === "split") {
-      const currentUserPrebans = extractUserPrebans(prebanPicks);
+      const currentUserPrebans = picksByTeam(prebanPicks, "user");
       const updatedPresets: AllyPrebanPresets = {
         ...allyPrebanPresets,
         [firstPickTeam]: currentUserPrebans,
@@ -809,7 +414,7 @@ export default function App() {
       const allyPrebans = prebanPicksFromUserPresets(updatedPresets[nextFirstPickTeam]);
       setPrebanPicks(mergePrebanPicks(allyPrebans, enemyPrebans));
     } else if (rememberPreban) {
-      const allyPrebans = extractUserPrebans(prebanPicks);
+      const allyPrebans = picksByTeam(prebanPicks, "user");
       setPrebanPicks(mergePrebanPicks(allyPrebans, enemyPrebans));
     } else {
       setPrebanPicks(enemyPrebans);
@@ -861,7 +466,7 @@ export default function App() {
 
   function choosePrebanMemoryMode(nextMode: PrebanMemoryMode) {
     if (nextMode === "split") {
-      const currentUserPrebans = extractUserPrebans(prebanPicks);
+      const currentUserPrebans = picksByTeam(prebanPicks, "user");
       setAllyPrebanPresets((presets) => ({
         ...presets,
         [firstPickTeam]: currentUserPrebans,
@@ -884,8 +489,8 @@ export default function App() {
 
       <div className="draft-grid">
         <section className="control-panel">
-          <div className="settings-heading">
-            <h2>{t(language, "settings")}</h2>
+          <div className="panel-heading settings-heading">
+            <h2 className="panel-title">{t(language, "settings")}</h2>
             <div className="language-controls" role="group" aria-label={t(language, "language")}>
               <span className="language-label">{t(language, "language")}</span>
               <button
@@ -1095,7 +700,7 @@ export default function App() {
           <section className="hero-picker-panel">
           <div className="panel-heading">
             <div>
-              <h2>{t(language, "heroPicker")}</h2>
+              <h2 className="panel-title">{t(language, "heroPicker")}</h2>
               <span>
                 {heroPickerList.length} {t(language, "shown")}
                 {heroesWithElement.length !== displayHeroes.length
@@ -1242,7 +847,7 @@ export default function App() {
           >
             <div className="panel-heading">
               <div>
-                <h2>
+                <h2 className="panel-title">
                   {activeRecommendation?.phase === "ban"
                     ? t(language, "banSuggestions")
                     : activeRecommendation?.phase === "preban"
@@ -1320,7 +925,11 @@ export default function App() {
                       ) : (
                         <span className="avatar-fallback small">?</span>
                       )}
-                      {!hidePrebanPct ? (
+                      {hidePrebanPct ? (
+                        <span className="ai-recommend-meta is-reserved" aria-hidden="true">
+                          <span className="ai-recommend-pct">{rateLabel}</span>
+                        </span>
+                      ) : (
                         <span className="ai-recommend-meta">
                           <span className="ai-recommend-pct">{rateLabel}</span>
                           {banPhase ? (
@@ -1329,7 +938,7 @@ export default function App() {
                             </span>
                           ) : null}
                         </span>
-                      ) : null}
+                      )}
                     </button>
                   );
                 })}

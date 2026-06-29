@@ -28,13 +28,24 @@ MIN_RESPONSE_COUNT = 3
 WEIGHT_SYNERGY = 0.48
 WEIGHT_LACK_RESPONSE = 0.40
 WEIGHT_POSITION_THREAT = 0.12
-BAN_RATE_EXPONENT = 5.0
+BAN_RATE_EXPONENT = 3.0
 BAN_RATE_RANK_WEIGHTS = (1.35, 1.0, 0.78, 0.62)
+BANNABLE_SOLE_COUNTER_COVERAGE_MULTIPLIER = 0.25
 
-RESPONSE_BUCKET_WEIGHTS: dict[str, float] = {
+SUPPORTED_RESPONSE_BUCKETS = frozenset({"2_3", "4", "7", "8_9", "10"})
+
+LATE_RESPONSE_BUCKET_WEIGHTS: dict[str, float] = {
     "7": 0.20,
     "8_9": 0.40,
     "10": 0.40,
+}
+
+POSITION_BUCKET_RESPONSE_WEIGHTS: dict[str, dict[str, float]] = {
+    "2_3": {"2_3": 1.0},
+    "4": {"4": 1.0},
+    "7": {"7": 1.0},
+    "8_9": {"8_9": 1.0},
+    "10": {"10": 1.0},
 }
 
 ORDER_THREAT_SCORES: dict[int, float] = {
@@ -123,7 +134,7 @@ def load_response_lookup() -> dict[tuple[str, str, str], ResponseEntry]:
         if response_count < MIN_RESPONSE_COUNT:
             continue
         bucket = row["position_bucket"]
-        if bucket not in RESPONSE_BUCKET_WEIGHTS:
+        if bucket not in SUPPORTED_RESPONSE_BUCKETS:
             continue
         candidate = row["candidate_hero"]
         enemy = row["enemy_hero"]
@@ -155,6 +166,11 @@ def is_valid_hero(hero: str | None, valid_heroes: set[str] | None = None) -> boo
 def enemy_protected_order(first_pick_team: str) -> int:
     """Global draft order of the enemy team's protected (unbannable) pick."""
     return 5 if first_pick_team == "Enemy Team" else 6
+
+
+def ally_protected_order(first_pick_team: str) -> int:
+    """Global draft order of the ally team's protected (enemy-unbannable) pick."""
+    return 5 if first_pick_team == "My Team" else 6
 
 
 def derive_ordered_picks(
@@ -263,18 +279,27 @@ def enemy_synergy_core_score(
     return _combine_synergy_scores(matched_scores), matches
 
 
+def response_bucket_weights_for_position(position_bucket: str | None) -> dict[str, float]:
+    """Map enemy candidate position bucket to response CSV buckets."""
+    if position_bucket in POSITION_BUCKET_RESPONSE_WEIGHTS:
+        return POSITION_BUCKET_RESPONSE_WEIGHTS[position_bucket]
+    return dict(LATE_RESPONSE_BUCKET_WEIGHTS)
+
+
 def _ally_response_coverage(
     ally_hero: str,
     enemy_candidate: str,
     *,
     response_lookup: dict[tuple[str, str, str], ResponseEntry] | None = None,
+    bucket_weights: dict[str, float] | None = None,
 ) -> tuple[float, list[dict[str, object]]]:
     lookup = response_lookup if response_lookup is not None else load_response_lookup()
+    selected_buckets = bucket_weights if bucket_weights is not None else LATE_RESPONSE_BUCKET_WEIGHTS
     weighted_sum = 0.0
     weight_total = 0.0
     matches: list[dict[str, object]] = []
 
-    for bucket, bucket_weight in RESPONSE_BUCKET_WEIGHTS.items():
+    for bucket, bucket_weight in selected_buckets.items():
         entry = lookup.get((bucket, ally_hero, enemy_candidate))
         if entry is None:
             continue
@@ -294,46 +319,94 @@ def _ally_response_coverage(
     return min(weighted_sum / weight_total, 1.0), matches
 
 
+def _combine_response_source_coverages(coverages: list[float]) -> float:
+    if not coverages:
+        return 0.0
+    sorted_coverages = sorted(coverages, reverse=True)
+    if len(sorted_coverages) == 1:
+        return sorted_coverages[0]
+    return min(1.0, 0.75 * sorted_coverages[0] + 0.25 * sorted_coverages[1])
+
+
+def _apply_sole_bannable_counter_discount(
+    response_sources: list[dict[str, object]],
+    original_team_coverage: float,
+) -> tuple[float, bool]:
+    if len(response_sources) != 1:
+        return original_team_coverage, False
+    if bool(response_sources[0]["is_protected"]):
+        return original_team_coverage, False
+    effective_coverage = original_team_coverage * BANNABLE_SOLE_COUNTER_COVERAGE_MULTIPLIER
+    return effective_coverage, True
+
+
 def ally_lack_response_score(
     enemy_candidate: str,
     ally_picks: list[dict[str, object]],
     *,
+    first_pick_team: str = "My Team",
+    position_bucket: str | None = None,
     response_lookup: dict[tuple[str, str, str], ResponseEntry] | None = None,
     response_evidence: set[str] | None = None,
-) -> tuple[float, list[dict[str, object]], float]:
+) -> tuple[float, list[dict[str, object]], float, list[str], dict[str, object]]:
     lookup = response_lookup if response_lookup is not None else load_response_lookup()
     evidence = response_evidence if response_evidence is not None else candidates_with_response_evidence()
+    bucket_weights = response_bucket_weights_for_position(position_bucket)
+    response_buckets_used = sorted(bucket_weights.keys())
+    protected_order = ally_protected_order(first_pick_team)
 
-    ally_coverages: list[float] = []
+    response_sources: list[dict[str, object]] = []
     all_matches: list[dict[str, object]] = []
 
     for pick in ally_picks:
         ally_hero = str(pick.get("hero") or "")
         if not is_valid_hero(ally_hero):
             continue
+        order = int(pick.get("order") or 0)
         coverage, matches = _ally_response_coverage(
             ally_hero,
             enemy_candidate,
             response_lookup=lookup,
+            bucket_weights=bucket_weights,
         )
-        if matches:
-            ally_coverages.append(coverage)
-            all_matches.extend(matches)
+        if not matches:
+            continue
+        response_sources.append(
+            {
+                "ally_hero": ally_hero,
+                "order": order,
+                "is_protected": order == protected_order,
+                "coverage": round(coverage, 6),
+            }
+        )
+        all_matches.extend(matches)
+
+    response_debug: dict[str, object] = {
+        "response_sources": response_sources,
+        "sole_counter_is_bannable": False,
+        "effective_team_response_coverage": 0.0,
+        "original_team_response_coverage": 0.0,
+    }
 
     if enemy_candidate not in evidence:
-        return 0.50, all_matches, 0.0
+        return 0.50, all_matches, 0.0, response_buckets_used, response_debug
 
-    if not ally_coverages:
-        return 1.0, all_matches, 0.0
+    if not response_sources:
+        return 1.0, all_matches, 0.0, response_buckets_used, response_debug
 
-    sorted_coverages = sorted(ally_coverages, reverse=True)
-    if len(sorted_coverages) == 1:
-        team_coverage = sorted_coverages[0]
-    else:
-        team_coverage = min(1.0, 0.75 * sorted_coverages[0] + 0.25 * sorted_coverages[1])
+    original_team_coverage = _combine_response_source_coverages(
+        [float(source["coverage"]) for source in response_sources]
+    )
+    effective_team_coverage, sole_counter_is_bannable = _apply_sole_bannable_counter_discount(
+        response_sources,
+        original_team_coverage,
+    )
+    response_debug["sole_counter_is_bannable"] = sole_counter_is_bannable
+    response_debug["original_team_response_coverage"] = round(original_team_coverage, 6)
+    response_debug["effective_team_response_coverage"] = round(effective_team_coverage, 6)
 
-    lack_score = min(max(1.0 - team_coverage, 0.0), 1.0)
-    return lack_score, all_matches, team_coverage
+    lack_score = min(max(1.0 - effective_team_coverage, 0.0), 1.0)
+    return lack_score, all_matches, effective_team_coverage, response_buckets_used, response_debug
 
 
 def enemy_position_threat_score(order: int | None) -> float:
@@ -349,15 +422,18 @@ def _build_reasons(
     threat_score: float,
     synergy_matches: list[dict[str, object]],
     response_matches: list[dict[str, object]],
+    sole_counter_is_bannable: bool = False,
     order: int,
 ) -> list[str]:
     reasons: list[str] = []
     if synergy_score >= 0.45 and synergy_matches:
         reasons.append("Strong synergy with enemy team core")
     if lack_score >= 0.65:
-        reasons.append("Ally team lacks known late-bucket responses")
+        reasons.append("Ally team lacks known position-bucket responses")
     elif lack_score <= 0.35 and response_matches:
         reasons.append("Ally team already has response coverage")
+    if sole_counter_is_bannable:
+        reasons.append("Only known response is bannable")
     if threat_score >= 0.85:
         reasons.append(f"High late-pick threat at order {order}")
     elif threat_score >= 0.70:
@@ -429,9 +505,17 @@ def recommend_final_bans(
             enemy_context,
             synergy_lookup=synergy_lookup,
         )
-        lack_score, response_matches, team_coverage = ally_lack_response_score(
+        (
+            lack_score,
+            response_matches,
+            team_coverage,
+            response_buckets_used,
+            response_debug,
+        ) = ally_lack_response_score(
             hero,
             ally_picks,
+            first_pick_team=first_pick_team,
+            position_bucket=position_bucket,
             response_lookup=response_lookup,
             response_evidence=response_evidence,
         )
@@ -461,11 +545,17 @@ def recommend_final_bans(
                     threat_score=threat_score,
                     synergy_matches=synergy_matches,
                     response_matches=response_matches,
+                    sole_counter_is_bannable=bool(response_debug["sole_counter_is_bannable"]),
                     order=order,
                 ),
                 "debug": {
                     "synergy_matches": synergy_matches,
                     "response_matches": response_matches,
+                    "response_buckets_used": response_buckets_used,
+                    "response_sources": response_debug["response_sources"],
+                    "sole_counter_is_bannable": response_debug["sole_counter_is_bannable"],
+                    "effective_team_response_coverage": response_debug["effective_team_response_coverage"],
+                    "original_team_response_coverage": response_debug["original_team_response_coverage"],
                     "team_response_coverage": round(team_coverage, 6),
                     "filtered_out": filtered_out,
                 },

@@ -22,6 +22,13 @@ h2 {
   font-size: 1.15rem;
 }
 
+.panel-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
 .draft-panel,
 .control-panel,
 .ai-recommend-panel,
@@ -117,6 +124,8 @@ h2 {
 
 .team-column > .panel-heading h2 {
   text-align: center;
+  font-size: 0.85rem;
+  font-weight: 700;
 }
 
 .preban-section {
@@ -214,12 +223,23 @@ h2 {
   min-width: 0;
 }
 
-.draft-heading-start h2 {
+.draft-heading-start .panel-title {
   margin: 0;
 }
 
 .draft-heading .panel-link-button {
   margin-top: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.draft-heading .draft-action-icon {
+  display: none;
+}
+
+.draft-heading .draft-action-label {
+  display: inline;
 }
 
 .draft-reset-button {
@@ -406,17 +426,6 @@ select:focus {
   grid-column: 1 / -1;
 }
 
-.settings-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.settings-heading h2 {
-  margin-bottom: 0;
-}
-
 .language-controls {
   display: inline-flex;
   align-items: center;
@@ -521,19 +530,6 @@ select:focus {
   overflow-wrap: anywhere;
 }
 
-.ai-recommend-meta {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  margin-bottom: 12px;
-  line-height: 1.45;
-  flex-shrink: 0;
-}
-
-.ai-recommend-meta strong {
-  color: var(--text-main);
-  font-weight: 700;
-}
-
 .ai-recommend-list {
   display: flex;
   flex-direction: column;
@@ -611,6 +607,10 @@ select:focus {
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
+}
+
+.ai-recommend-meta.is-reserved {
+  visibility: hidden;
 }
 
 .ai-recommend-pct {
@@ -1103,18 +1103,6 @@ select:focus {
   width: var(--picker-avatar);
   height: var(--picker-avatar);
   font-size: var(--picker-avatar-font);
-}
-
-.hero-card strong {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  border-radius: 999px;
-  background: var(--panel-bg);
-  border: 1px solid var(--border-soft-mid);
-  color: var(--gold-bright);
-  font-size: 0.72rem;
-  padding: 4px 8px;
 }
 
 /* When the hero picker panel is narrow, match smaller pick avatars (56px) and scale filter chips */
