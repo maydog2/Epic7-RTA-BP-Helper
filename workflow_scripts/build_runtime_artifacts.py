@@ -17,7 +17,15 @@ from generate_response_stats import refresh_response_stats  # noqa: E402
 from generate_synergy_stats import refresh_synergy_stats  # noqa: E402
 from hero_details_io import DEFAULT_HERO_DETAILS_PATH  # noqa: E402
 from backend.preban_recommender import load_preban_counts_from_raw  # noqa: E402
-from backend.runtime_paths import FIRST_PICK_RECORDS_PATH, PREBAN_STATS_PATH, RUNTIME_DATA_DIR  # noqa: E402
+from backend.runtime_paths import (  # noqa: E402
+    FINAL_BAN_EVALUATION_PATH,
+    FINAL_BAN_STATS_PATH,
+    FIRST_PICK_RECORDS_PATH,
+    PREBAN_STATS_PATH,
+    RUNTIME_DATA_DIR,
+)
+from evaluate_final_ban_hybrid import run_evaluation  # noqa: E402
+from generate_final_ban_stats import refresh_final_ban_stats  # noqa: E402
 from update_hero_details_appearance_stats import (  # noqa: E402
     DEFAULT_RAW_PATH,
     update_hero_details,
@@ -77,11 +85,20 @@ def refresh_match_derived_stats(
             handle,
         )
 
+    final_ban_summary = refresh_final_ban_stats(raw_path=raw_path)
+    final_ban_artifact = final_ban_summary["artifact"]
+    evaluation_report = run_evaluation(raw_path=raw_path)
+
     summary.update(
         {
             "preban_stats_path": str(PREBAN_STATS_PATH),
             "first_pick_records_path": str(FIRST_PICK_RECORDS_PATH),
             "first_pick_record_count": len(records),
+            "final_ban_stats_path": str(FINAL_BAN_STATS_PATH),
+            "final_ban_decision_count": final_ban_artifact.get("decision_count", 0),
+            "final_ban_label_coverage": final_ban_summary["label_coverage"],
+            "final_ban_evaluation_path": str(FINAL_BAN_EVALUATION_PATH),
+            "final_ban_evaluation_insufficient_data": evaluation_report.get("insufficient_data"),
         }
     )
 
@@ -149,6 +166,12 @@ def main() -> None:
     print(
         f"Wrote {summary['first_pick_records_path']} "
         f"({summary['first_pick_record_count']} first-pick records)"
+    )
+    coverage = summary.get("final_ban_label_coverage") or {}
+    print(
+        f"Wrote {summary['final_ban_stats_path']} "
+        f"({summary.get('final_ban_decision_count', 0)} labeled ban decisions, "
+        f"label coverage {coverage.get('labeled_match_count', 0)}/{coverage.get('match_count', 0)})"
     )
 
     if args.skip_reranker:

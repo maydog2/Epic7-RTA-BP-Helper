@@ -4,16 +4,26 @@ from __future__ import annotations
 
 import csv
 import logging
+import pickle
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from .runtime_paths import RERANKER_DATA_DIR, WORKFLOW_DIR
+from .runtime_paths import FINAL_BAN_STATS_PATH, RERANKER_DATA_DIR, WORKFLOW_DIR
 
 if str(WORKFLOW_DIR) not in sys.path:
     sys.path.insert(0, str(WORKFLOW_DIR))
 
+from final_ban_stats_core import (  # noqa: E402
+    HANDLED_BY_HYBRID,
+    HANDLED_BY_V1,
+    HistoricalLookup,
+    actor_pick_order_for_ui_first_pick_team,
+    blend_hybrid_score,
+    lookup_historical_ban_rate,
+)
 from match_history_utils import get_position_bucket  # noqa: E402
+from transformer_draft_data import WARFARE_RULE_ANY  # noqa: E402
 
 SYNERGY_STATS_PATH = RERANKER_DATA_DIR / "hero_synergy_stats.csv"
 RESPONSE_STATS_PATH = RERANKER_DATA_DIR / "hero_counter_or_response_stats.csv"
@@ -59,7 +69,7 @@ ORDER_THREAT_SCORES: dict[int, float] = {
 }
 
 INVALID_HERO_TOKENS = frozenset({"", "unknown", "<PAD>", "<UNK>"})
-HANDLED_BY = "final_ban_stats_v1"
+HANDLED_BY = HANDLED_BY_V1
 
 
 @dataclass(frozen=True)
@@ -77,13 +87,15 @@ class ResponseEntry:
 _synergy_lookup: dict[tuple[str, str], SynergyEntry] | None = None
 _response_lookup: dict[tuple[str, str, str], ResponseEntry] | None = None
 _candidates_with_response_evidence: set[str] | None = None
+_final_ban_stats_artifact: dict[str, object] | None = None
 
 
 def reset_cached_stats() -> None:
-    global _synergy_lookup, _response_lookup, _candidates_with_response_evidence
+    global _synergy_lookup, _response_lookup, _candidates_with_response_evidence, _final_ban_stats_artifact
     _synergy_lookup = None
     _response_lookup = None
     _candidates_with_response_evidence = None
+    _final_ban_stats_artifact = None
 
 
 def _read_csv_rows(path: Path) -> list[dict[str, str]]:
@@ -415,17 +427,57 @@ def enemy_position_threat_score(order: int | None) -> float:
     return ORDER_THREAT_SCORES.get(int(order), 0.50)
 
 
-def _build_reasons(
+def load_final_ban_stats_artifact() -> dict[str, object] | None:
+    global _final_ban_stats_artifact
+    if _final_ban_stats_artifact is not None:
+        return _final_ban_stats_artifact
+
+    if not FINAL_BAN_STATS_PATH.exists():
+        logging.warning("Final-ban historical stats artifact not found: %s", FINAL_BAN_STATS_PATH)
+        _final_ban_stats_artifact = None
+        return None
+
+    try:
+        with FINAL_BAN_STATS_PATH.open("rb") as handle:
+            artifact = pickle.load(handle)
+    except Exception as exc:  # noqa: BLE001
+        logging.warning("Failed to load final-ban stats artifact: %s", exc)
+        _final_ban_stats_artifact = None
+        return None
+
+    _final_ban_stats_artifact = artifact
+    return artifact
+
+
+def resolved_handled_by(artifact: dict[str, object] | None) -> str:
+    if artifact and artifact.get("has_labeled_decisions"):
+        return str(artifact.get("handled_by") or HANDLED_BY_HYBRID)
+    return HANDLED_BY_V1
+
+
+def _build_hybrid_reasons(
     *,
+    lookup: HistoricalLookup,
+    formula_score: float,
     synergy_score: float,
     lack_score: float,
     threat_score: float,
     synergy_matches: list[dict[str, object]],
     response_matches: list[dict[str, object]],
-    sole_counter_is_bannable: bool = False,
+    sole_counter_is_bannable: bool,
     order: int,
 ) -> list[str]:
     reasons: list[str] = []
+    if lookup.context_level and lookup.confidence >= 0.35 and lookup.historical_score >= 0.30:
+        reasons.append(
+            "Historically banned often in similar draft contexts "
+            f"({lookup.ban_count}/{lookup.eligible_count} eligible picks)"
+        )
+    elif lookup.context_level and lookup.confidence > 0.0:
+        reasons.append("Limited historical ban evidence; blending with lineup formula")
+    elif lookup.history_weight <= 0.0:
+        reasons.append("No labeled final-ban history; using lineup formula only")
+
     if synergy_score >= 0.45 and synergy_matches:
         reasons.append("Strong synergy with enemy team core")
     if lack_score >= 0.65:
@@ -474,10 +526,12 @@ def recommend_final_bans(
     *,
     valid_heroes: set[str] | None = None,
     first_pick_team: str = "My Team",
+    warfare_rules: str = WARFARE_RULE_ANY,
     top_k: int = MAX_BANNABLE_ENEMY_PICKS,
     synergy_lookup: dict[tuple[str, str], SynergyEntry] | None = None,
     response_lookup: dict[tuple[str, str, str], ResponseEntry] | None = None,
     response_evidence: set[str] | None = None,
+    final_ban_stats: dict[str, object] | None = None,
 ) -> dict[str, object]:
     candidates, filtered_out = build_ban_candidates(
         ally_picks=ally_picks,
@@ -493,6 +547,11 @@ def recommend_final_bans(
         for pick in enemy_picks
         if is_valid_hero(str(pick.get("hero") or ""), valid_heroes)
     ]
+
+    stats_artifact = final_ban_stats if final_ban_stats is not None else load_final_ban_stats_artifact()
+    handled_by = resolved_handled_by(stats_artifact)
+    actor_pick_order = actor_pick_order_for_ui_first_pick_team(first_pick_team)
+    hybrid_config = (stats_artifact or {}).get("hybrid_config")
 
     recommendations: list[dict[str, object]] = []
     for pick in candidates:
@@ -520,7 +579,7 @@ def recommend_final_bans(
             response_evidence=response_evidence,
         )
         threat_score = enemy_position_threat_score(order)
-        ban_score = min(
+        formula_score = min(
             max(
                 WEIGHT_SYNERGY * synergy_score
                 + WEIGHT_LACK_RESPONSE * lack_score
@@ -530,16 +589,35 @@ def recommend_final_bans(
             1.0,
         )
 
+        historical_lookup = lookup_historical_ban_rate(
+            stats_artifact,
+            actor_pick_order=actor_pick_order,
+            warfare_rule=warfare_rules,
+            position_bucket=position_bucket,
+            hero=hero,
+            hybrid_config=hybrid_config if isinstance(hybrid_config, dict) else None,
+        )
+        ban_score, history_weight = blend_hybrid_score(formula_score, historical_lookup)
+
         recommendations.append(
             {
                 "hero": hero,
                 "order": order,
                 "position_bucket": position_bucket,
                 "ban_score": round(ban_score, 6),
+                "formula_score": round(formula_score, 6),
+                "historical_ban_rate": round(historical_lookup.historical_score, 6),
+                "historical_ban_count": historical_lookup.ban_count,
+                "historical_eligible_count": historical_lookup.eligible_count,
+                "historical_context_level": historical_lookup.context_level,
+                "historical_confidence": round(historical_lookup.confidence, 6),
+                "historical_weight": round(history_weight, 6),
                 "enemy_synergy_core_score": round(synergy_score, 6),
                 "ally_lack_response_score": round(lack_score, 6),
                 "enemy_position_threat_score": round(threat_score, 6),
-                "reasons": _build_reasons(
+                "reasons": _build_hybrid_reasons(
+                    lookup=historical_lookup,
+                    formula_score=formula_score,
                     synergy_score=synergy_score,
                     lack_score=lack_score,
                     threat_score=threat_score,
@@ -557,6 +635,7 @@ def recommend_final_bans(
                     "effective_team_response_coverage": response_debug["effective_team_response_coverage"],
                     "original_team_response_coverage": response_debug["original_team_response_coverage"],
                     "team_response_coverage": round(team_coverage, 6),
+                    "historical_parent_rate": round(historical_lookup.parent_rate, 6),
                     "filtered_out": filtered_out,
                 },
             }
@@ -569,7 +648,7 @@ def recommend_final_bans(
 
     return {
         "phase": "ban",
-        "handled_by": HANDLED_BY,
+        "handled_by": handled_by,
         "top_10_heroes": [item["hero"] for item in limited],
         "top_10_rates": top_rates,
         "recommendations": limited,
@@ -584,7 +663,9 @@ def recommend_final_bans_from_lists(
     ally_preban: list[str] | None = None,
     enemy_preban: list[str] | None = None,
     valid_heroes: set[str] | None = None,
+    warfare_rules: str = WARFARE_RULE_ANY,
     top_k: int = MAX_BANNABLE_ENEMY_PICKS,
+    final_ban_stats: dict[str, object] | None = None,
 ) -> dict[str, object]:
     ally_picks = derive_ordered_picks(user_team_picks, first_pick_team=first_pick_team, side="ally")
     enemy_picks = derive_ordered_picks(enemy_team_picks, first_pick_team=first_pick_team, side="enemy")
@@ -595,5 +676,7 @@ def recommend_final_bans_from_lists(
         enemy_preban=enemy_preban,
         valid_heroes=valid_heroes,
         first_pick_team=first_pick_team,
+        warfare_rules=warfare_rules,
         top_k=top_k,
+        final_ban_stats=final_ban_stats,
     )

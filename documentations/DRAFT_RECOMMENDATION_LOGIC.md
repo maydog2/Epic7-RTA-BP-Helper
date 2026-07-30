@@ -263,7 +263,7 @@ Level 3 每条记录权重再乘 **加权方向相似度**（0.6 / 0.4）。
 |---|---|
 | **Module** | `backend/final_ban_recommender.py` |
 | **Trigger** | `len(user_picks) >= 5 and len(enemy_picks) >= 5` |
-| **Handled by** | `"final_ban_stats_v1"` |
+| **Handled by** | `"final_ban_hybrid_v2"` when labeled stats exist; otherwise `"final_ban_stats_v1"` |
 
 ### English
 
@@ -271,21 +271,36 @@ Level 3 每条记录权重再乘 **加权方向相似度**（0.6 / 0.4）。
 
 **Candidates:** Up to 4 bannable enemy picks (excludes protected 3rd-lock slot on each side per RTA rules).
 
-**Scoring per enemy hero:**
+**Scoring:** Hybrid blend of real final-ban history and the existing lineup formula.
 
 ```text
-ban_score = 0.48 × synergy_core
-          + 0.40 × ally_lack_response
-          + 0.12 × position_threat
+smoothed_rate = (ban_count + prior_strength × parent_rate)
+              / (eligible_count + prior_strength)
+confidence = eligible_count / (eligible_count + confidence_strength)
+history_weight = max_history_weight × confidence
+ban_score = history_weight × historical_score + (1 - history_weight) × formula_score
+```
+
+- **Historical score** — layered lookup by actor first/second pick, warfare rule, candidate position bucket, and hero, with fallback to coarser buckets and parent smoothing.
+- **Formula score** — unchanged v1 blend:
+
+```text
+formula_score = 0.48 × synergy_core
+              + 0.40 × ally_lack_response
+              + 0.12 × position_threat
 ```
 
 - **Synergy core** — how strongly the hero synergizes with other enemy locks
 - **Ally lack response** — ally team lacks known counters/responses to this hero
 - **Position threat** — order-based threat (late picks weighted higher)
 
-Stats from CSV artifacts: `hero_synergy_stats.csv`, `hero_counter_or_response_stats.csv`.
+Stats sources:
+- Historical artifact: `data/runtime/final_ban_stats.pkl` from labeled `ally_final_ban_target` / `enemy_final_ban_target`
+- Formula CSVs: `hero_synergy_stats.csv`, `hero_counter_or_response_stats.csv`
 
-**Output:** `phase: "ban"`, ranked enemy heroes, `top_10_rates` as **display priority** among ban candidates (sharpened, ~100% among shown targets).
+**v1 note:** This first hybrid version does **not** use `winner_side`. Re-scrape with `E7_GET_MATCHES_REVISIT=1` to backfill final-ban labels before history becomes the primary signal.
+
+**Output:** `phase: "ban"`, ranked enemy heroes, hybrid debug fields (`historical_ban_rate`, `formula_score`, `historical_weight`, ...), and `top_10_rates` as **display priority** among ban candidates (sharpened, ~100% among shown targets).
 
 **Frontend:** User selects one enemy hero as ban target; UI shows ban overlay on team panel (`selectedBanCode`).
 
@@ -295,7 +310,7 @@ Stats from CSV artifacts: `hero_synergy_stats.csv`, `hero_counter_or_response_st
 
 **候选：** 最多 4 个可 ban 的敌方 pick（不含双方受保护的第 3 锁）。
 
-**评分：** 协同核心 + 我方缺 counter + 位置威胁（见上公式）。
+**评分：** 真实终 ban 历史频率为主、阵容统计公式为辅的混合评分（见上公式）。有足够 labeled 数据时 `handled_by = final_ban_hybrid_v2`；否则自动回退纯公式 `final_ban_stats_v1`。
 
 **输出：** `phase: "ban"`，`top_10_rates` 为展示用相对优先级（非模型 softmax）。
 

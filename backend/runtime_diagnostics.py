@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+import json
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,7 @@ from .runtime_paths import (
     APP_BASE_DIR,
     BUNDLE_DIR,
     DATA_DIR,
+    FINAL_BAN_STATS_PATH,
     FIRST_PICK_RECORDS_PATH,
     HERO_DETAILS_PATH,
     PREBAN_STATS_PATH,
@@ -105,7 +107,7 @@ def validate_loaded_encoders(encoders: Any) -> None:
     if obsolete:
         raise RuntimeError(
             "Loaded encoder contains obsolete warfare categories: "
-            f"{obsolete}. Expected concrete rules only: Support, Offense, Defense, Resistance."
+            f"{obsolete}. Expected concrete rules only: Special, Offense, Defense, Resistance."
         )
 
 
@@ -117,6 +119,7 @@ def runtime_artifact_infos() -> dict[str, dict[str, Any]]:
     infos = {
         "preban_stats_pkl": file_info(PREBAN_STATS_PATH),
         "first_pick_records_pkl": file_info(FIRST_PICK_RECORDS_PATH),
+        "final_ban_stats_pkl": file_info(FINAL_BAN_STATS_PATH),
         "raw_match_history_jsonl": file_info(RAW_MATCH_HISTORY_PATH),
     }
     first_pick_info = infos["first_pick_records_pkl"]
@@ -129,6 +132,40 @@ def runtime_artifact_infos() -> dict[str, dict[str, Any]]:
             first_pick_info["record_count"] = len(records) if hasattr(records, "__len__") else None
         except Exception as exc:
             first_pick_info["record_count_error"] = str(exc)
+
+    final_ban_info = infos["final_ban_stats_pkl"]
+    if final_ban_info["exists"] and (final_ban_info["size"] or 0) > 0:
+        try:
+            import pickle
+
+            with FINAL_BAN_STATS_PATH.open("rb") as handle:
+                artifact = pickle.load(handle)
+            final_ban_info["decision_count"] = artifact.get("decision_count")
+            final_ban_info["labeled_match_count"] = artifact.get("labeled_match_count")
+            final_ban_info["handled_by"] = artifact.get("handled_by")
+            final_ban_info["has_labeled_decisions"] = artifact.get("has_labeled_decisions")
+        except Exception as exc:
+            final_ban_info["load_error"] = str(exc)
+
+    raw_info = infos["raw_match_history_jsonl"]
+    if raw_info["exists"] and (raw_info["size"] or 0) > 0:
+        try:
+            labeled = 0
+            total = 0
+            with RAW_MATCH_HISTORY_PATH.open(encoding="utf-8") as handle:
+                for line in handle:
+                    stripped = line.strip()
+                    if not stripped:
+                        continue
+                    total += 1
+                    record = json.loads(stripped)
+                    if record.get("ally_final_ban_target") and record.get("enemy_final_ban_target"):
+                        labeled += 1
+            raw_info["match_count"] = total
+            raw_info["labeled_final_ban_match_count"] = labeled
+            raw_info["final_ban_label_coverage"] = (labeled / total) if total else 0.0
+        except Exception as exc:
+            raw_info["coverage_error"] = str(exc)
     return infos
 
 

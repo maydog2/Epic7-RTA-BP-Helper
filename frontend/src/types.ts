@@ -1,6 +1,6 @@
 export type FirstPickTeam = "My Team" | "Enemy Team";
 
-export type WarfareRule = "ANY" | "Support" | "Offense" | "Defense" | "Resistance";
+export type WarfareRule = "ANY" | "Special" | "Offense" | "Defense" | "Resistance";
 
 export type Hero = {
   code: string;

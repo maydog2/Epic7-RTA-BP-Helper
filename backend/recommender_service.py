@@ -490,6 +490,7 @@ def final_ban_recommendation(
     first_pick_team: str,
     ally_preban: list[str] | None,
     enemy_preban: list[str] | None,
+    warfare_rules: str = WARFARE_RULE_ANY,
     top_k: int = 4,
 ) -> dict[str, object]:
     return recommend_final_bans_from_lists(
@@ -499,6 +500,7 @@ def final_ban_recommendation(
         ally_preban=ally_preban,
         enemy_preban=enemy_preban,
         valid_heroes=load_final_ban_valid_heroes(),
+        warfare_rules=warfare_rules,
         top_k=top_k,
     )
 
@@ -627,6 +629,7 @@ def predict_next_hero_transformer(
             first_pick_team=first_pick_team,
             ally_preban=ally_preban,
             enemy_preban=enemy_preban,
+            warfare_rules=warfare_rules,
             top_k=4,
         )
 

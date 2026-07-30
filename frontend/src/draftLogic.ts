@@ -23,7 +23,7 @@ export const MAX_PREBAN_SIZE = 4;
 export const PREBAN_SUGGESTION_DISPLAY_SIZE = 10;
 /** Fetch one extra so a picked suggestion can be replaced without refetching. */
 export const PREBAN_SUGGESTION_POOL_SIZE = PREBAN_SUGGESTION_DISPLAY_SIZE + 1;
-export const WARFARE_RULE_OPTIONS: WarfareRule[] = ["ANY", "Support", "Offense", "Defense", "Resistance"];
+export const WARFARE_RULE_OPTIONS: WarfareRule[] = ["ANY", "Special", "Offense", "Defense", "Resistance"];
 /** Pick slot index 2 = third lock; cannot be chosen as ban target */
 export const BAN_PROTECTED_SLOT_INDEX = 2;
 export const PICK_ORDER_PATTERN = [

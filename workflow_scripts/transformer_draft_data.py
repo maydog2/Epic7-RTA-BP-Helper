@@ -69,7 +69,7 @@ POSITION_BUCKET_ORDER = (
     "10",
 )
 
-WARFARE_RULE_ORDER = ("Support", "Offense", "Defense", "Resistance")
+WARFARE_RULE_ORDER = ("Special", "Offense", "Defense", "Resistance")
 CONCRETE_WARFARE_RULES = WARFARE_RULE_ORDER
 WARFARE_RULE_ANY = "ANY"
 PAD_WARFARE_RULE_ID = 0

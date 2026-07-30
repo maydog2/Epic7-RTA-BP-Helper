@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,10 @@ from dateutil.relativedelta import relativedelta
 
 SIDES = frozenset({"ally", "enemy"})
 RAW_JSONL_PATH = Path("data/epic7_match_history_raw.jsonl")
+ALLY_FINAL_BAN_TARGET = "ally_final_ban_target"
+ENEMY_FINAL_BAN_TARGET = "enemy_final_ban_target"
+FINAL_BAN_TARGET_FIELDS = (ALLY_FINAL_BAN_TARGET, ENEMY_FINAL_BAN_TARGET)
+INVALID_HERO_TOKENS = frozenset({"", "unknown", "<PAD>", "<UNK>"})
 POSITION_BUCKETS = frozenset(
     {"1", "2_3", "4", "5_protected", "6_protected", "7", "8_9", "10"}
 )
@@ -66,21 +71,110 @@ def hero_code_from_li(hero_li) -> str | None:
     return code
 
 
-def extract_preban_and_picks(team_div) -> tuple[list[str], list[str]]:
-    """Stove RTA: prebans are li.preban-hero; draft picks are li.pick-hero (may also have ban)."""
+def _li_class_names(hero_li) -> set[str]:
+    classes = hero_li.get("class") or []
+    if isinstance(classes, str):
+        classes = classes.split()
+    return set(classes)
+
+
+def is_final_banned_pick_li(hero_li) -> bool:
+    classes = _li_class_names(hero_li)
+    return "pick-hero" in classes and "ban" in classes
+
+
+@dataclass(frozen=True)
+class TeamDraftExtraction:
+    prebans: list[str]
+    picks: list[str]
+    final_banned_pick: str | None
+    error: str | None = None
+
+
+def extract_team_draft(team_div) -> TeamDraftExtraction:
+    """Stove RTA: prebans are li.preban-hero; final ban marks one li.pick-hero with ban."""
     if not team_div:
-        return [], []
-    preban = []
+        return TeamDraftExtraction([], [], None, "missing team panel")
+
+    prebans: list[str] = []
     for li in team_div.select("li.preban-hero"):
         code = hero_code_from_li(li)
         if code:
-            preban.append(code)
-    picks = []
+            prebans.append(code)
+
+    picks: list[str] = []
+    banned_picks: list[str] = []
     for li in team_div.select("li.pick-hero"):
         code = hero_code_from_li(li)
-        if code:
-            picks.append(code)
-    return preban, picks
+        if not code:
+            continue
+        picks.append(code)
+        if is_final_banned_pick_li(li):
+            banned_picks.append(code)
+
+    if len(banned_picks) > 1:
+        return TeamDraftExtraction(
+            prebans,
+            picks,
+            None,
+            f"multiple final ban markers: {banned_picks}",
+        )
+
+    return TeamDraftExtraction(prebans, picks, banned_picks[0] if banned_picks else None)
+
+
+def extract_preban_and_picks(team_div) -> tuple[list[str], list[str]]:
+    extraction = extract_team_draft(team_div)
+    return extraction.prebans, extraction.picks
+
+
+def enemy_protected_order_for_match(first_pick_side: str) -> int:
+    return 6 if first_pick_side == "ally" else 5
+
+
+def ally_protected_order_for_match(first_pick_side: str) -> int:
+    return 5 if first_pick_side == "ally" else 6
+
+
+def draft_heroes_by_side(draft: list[dict[str, Any]]) -> tuple[set[str], set[str]]:
+    ally_heroes: set[str] = set()
+    enemy_heroes: set[str] = set()
+    for entry in draft:
+        hero = entry.get("hero")
+        side = entry.get("side")
+        if not hero or side not in SIDES:
+            continue
+        if side == "ally":
+            ally_heroes.add(hero)
+        else:
+            enemy_heroes.add(hero)
+    return ally_heroes, enemy_heroes
+
+
+def draft_order_for_hero(draft: list[dict[str, Any]], hero: str) -> int | None:
+    for entry in draft:
+        if entry.get("hero") == hero:
+            order = entry.get("order")
+            return int(order) if order is not None else None
+    return None
+
+
+def has_complete_final_ban_targets(match: dict[str, Any]) -> bool:
+    return all(match.get(field) for field in FINAL_BAN_TARGET_FIELDS)
+
+
+def merge_final_ban_targets(existing: dict[str, Any], incoming: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(existing)
+    for field in FINAL_BAN_TARGET_FIELDS:
+        if not merged.get(field) and incoming.get(field):
+            merged[field] = incoming[field]
+    return merged
+
+
+def should_merge_final_ban_targets(existing: dict[str, Any], incoming: dict[str, Any]) -> bool:
+    if not has_complete_final_ban_targets(incoming):
+        return False
+    return not has_complete_final_ban_targets(existing)
 
 
 def detect_first_pick_side(ally_team_div, enemy_team_div) -> str | None:
@@ -312,5 +406,72 @@ def validate_match_record(match: dict[str, Any]) -> list[str]:
         errors.append(
             f"match {match['match_id']}: prebanned heroes appear in draft: {sorted(overlap)}"
         )
+
+    present_final_ban_fields = [
+        field for field in FINAL_BAN_TARGET_FIELDS if match.get(field) is not None
+    ]
+    if len(present_final_ban_fields) == 1:
+        missing = next(field for field in FINAL_BAN_TARGET_FIELDS if field not in present_final_ban_fields)
+        errors.append(
+            f"match {match['match_id']}: final ban fields must both be present or absent; "
+            f"missing '{missing}'"
+        )
+    elif len(present_final_ban_fields) == 2:
+        ally_heroes, enemy_heroes = draft_heroes_by_side(draft)
+        ally_target = match.get(ALLY_FINAL_BAN_TARGET)
+        enemy_target = match.get(ENEMY_FINAL_BAN_TARGET)
+        for field_name, target in (
+            (ALLY_FINAL_BAN_TARGET, ally_target),
+            (ENEMY_FINAL_BAN_TARGET, enemy_target),
+        ):
+            if not isinstance(target, str) or not target.strip():
+                errors.append(f"match {match['match_id']}: {field_name} must be a non-empty string")
+                continue
+            if target in INVALID_HERO_TOKENS:
+                errors.append(f"match {match['match_id']}: invalid {field_name} '{target}'")
+
+        if isinstance(ally_target, str) and ally_target:
+            if ally_target not in enemy_heroes:
+                errors.append(
+                    f"match {match['match_id']}: {ALLY_FINAL_BAN_TARGET} '{ally_target}' "
+                    "is not in enemy draft picks"
+                )
+            if ally_target in ban_set:
+                errors.append(
+                    f"match {match['match_id']}: {ALLY_FINAL_BAN_TARGET} '{ally_target}' "
+                    "appears in preban"
+                )
+            ally_target_order = draft_order_for_hero(draft, ally_target)
+            if (
+                fps in SIDES
+                and ally_target_order is not None
+                and ally_target_order == enemy_protected_order_for_match(fps)
+            ):
+                errors.append(
+                    f"match {match['match_id']}: {ALLY_FINAL_BAN_TARGET} '{ally_target}' "
+                    "targets a protected enemy pick"
+                )
+
+        if isinstance(enemy_target, str) and enemy_target:
+            if enemy_target not in ally_heroes:
+                errors.append(
+                    f"match {match['match_id']}: {ENEMY_FINAL_BAN_TARGET} '{enemy_target}' "
+                    "is not in ally draft picks"
+                )
+            if enemy_target in ban_set:
+                errors.append(
+                    f"match {match['match_id']}: {ENEMY_FINAL_BAN_TARGET} '{enemy_target}' "
+                    "appears in preban"
+                )
+            enemy_target_order = draft_order_for_hero(draft, enemy_target)
+            if (
+                fps in SIDES
+                and enemy_target_order is not None
+                and enemy_target_order == ally_protected_order_for_match(fps)
+            ):
+                errors.append(
+                    f"match {match['match_id']}: {ENEMY_FINAL_BAN_TARGET} '{enemy_target}' "
+                    "targets a protected ally pick"
+                )
 
     return errors

@@ -77,10 +77,14 @@ workflow_scripts/*
 !workflow_scripts/transformer_draft_model.py
 !workflow_scripts/match_history_utils.py
 !workflow_scripts/build_runtime_artifacts.py
+!workflow_scripts/final_ban_stats_core.py
+!workflow_scripts/generate_final_ban_stats.py
+!workflow_scripts/evaluate_final_ban_hybrid.py
 
 # 以下应被上一段 workflow_scripts/* 覆盖；单独列出便于阅读
 workflow_scripts/get_*.py
 workflow_scripts/generate_*.py
+!workflow_scripts/generate_final_ban_stats.py
 workflow_scripts/build_transformer_draft_dataset.py
 workflow_scripts/evaluate_draft_models.py
 workflow_scripts/update_hero_details_appearance_stats.py

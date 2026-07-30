@@ -1,9 +1,19 @@
 import json
+import sys
 import threading
 import unittest
 from pathlib import Path
 
-import get_matches as gm
+WORKFLOW_DIR = Path(__file__).resolve().parent.parent / "workflow_scripts"
+if str(WORKFLOW_DIR) not in sys.path:
+    sys.path.insert(0, str(WORKFLOW_DIR))
+
+import get_matches as gm  # noqa: E402
+from match_history_utils import (  # noqa: E402
+    ALLY_FINAL_BAN_TARGET,
+    ENEMY_FINAL_BAN_TARGET,
+    make_draft_entry,
+)
 
 
 class ScraperCoordinatorTests(unittest.TestCase):
@@ -45,7 +55,7 @@ class ScraperCoordinatorTests(unittest.TestCase):
 
         def worker(worker_idx: int) -> None:
             draft = [
-                gm.make_draft_entry(
+                make_draft_entry(
                     order=i,
                     side="ally" if i <= 5 else "enemy",
                     hero=f"c{worker_idx:04d}{i:02d}",
@@ -92,6 +102,48 @@ class ScraperCoordinatorTests(unittest.TestCase):
         coord.complete_player_success("Free ( Europe )")
         self.assertIn("Free ( Europe )", coord.visited_players)
         self.assertNotIn("Free ( Europe )", coord.in_progress_players)
+
+    def test_record_match_updates_existing_row_with_final_ban_targets(self) -> None:
+        coord = gm.ScraperCoordinator()
+        draft = [
+            make_draft_entry(order=1, side="ally", hero="c1001"),
+            make_draft_entry(order=2, side="enemy", hero="c2001"),
+            make_draft_entry(order=3, side="enemy", hero="c2002"),
+            make_draft_entry(order=4, side="ally", hero="c1002"),
+            make_draft_entry(order=5, side="ally", hero="c1003"),
+            make_draft_entry(order=6, side="enemy", hero="c2003"),
+            make_draft_entry(order=7, side="enemy", hero="c2004"),
+            make_draft_entry(order=8, side="ally", hero="c1004"),
+            make_draft_entry(order=9, side="ally", hero="c1005"),
+            make_draft_entry(order=10, side="enemy", hero="c2005"),
+        ]
+        existing = {
+            "match_id": 0,
+            "first_pick_side": "ally",
+            "winner_side": "ally",
+            "ally_preban": ["c3001", "c3002"],
+            "enemy_preban": ["c4001", "c4002"],
+            "draft": draft,
+        }
+        incoming = {
+            "first_pick_side": "ally",
+            "winner_side": "ally",
+            "ally_preban": ["c3001", "c3002"],
+            "enemy_preban": ["c4001", "c4002"],
+            ALLY_FINAL_BAN_TARGET: "c2004",
+            ENEMY_FINAL_BAN_TARGET: "c1004",
+            "draft": draft,
+        }
+
+        self.assertEqual(coord.record_match(existing), "saved")
+        self.assertEqual(len(coord.matches), 1)
+        self.assertNotIn(ALLY_FINAL_BAN_TARGET, coord.matches[0])
+
+        self.assertEqual(coord.record_match(incoming), "updated")
+        self.assertEqual(len(coord.matches), 1)
+        self.assertEqual(coord.matches[0][ALLY_FINAL_BAN_TARGET], "c2004")
+        self.assertEqual(coord.matches[0][ENEMY_FINAL_BAN_TARGET], "c1004")
+        self.assertEqual(coord.matches[0]["match_id"], 0)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 import unittest
+from unittest import mock
 
 import backend.final_ban_recommender as fbr
 from match_history_utils import get_position_bucket
@@ -212,6 +213,63 @@ class FinalBanRecommenderTests(unittest.TestCase):
     def test_zero_scores_return_zero_rates(self) -> None:
         recommendations = [{"ban_score": 0.0} for _ in range(4)]
         self.assertEqual(fbr._score_to_display_rates(recommendations), [0.0, 0.0, 0.0, 0.0])
+
+    def test_hybrid_history_can_change_top_recommendation(self) -> None:
+        ally, enemy = _sample_draft()
+        artifact = {
+            "has_labeled_decisions": True,
+            "handled_by": "final_ban_hybrid_v2",
+            "hybrid_config": {
+                "prior_strength": 10.0,
+                "confidence_strength": 5.0,
+                "max_history_weight": 0.70,
+            },
+            "totals": {"ban_count": 20, "eligible_count": 80},
+            "levels": {
+                "level_1": {},
+                "level_2": {},
+                "level_3": {
+                    "first|c2001": {"ban_count": 20, "eligible_count": 20},
+                    "first|c2005": {"ban_count": 1, "eligible_count": 20},
+                },
+                "level_4": {
+                    "c2001": {"ban_count": 20, "eligible_count": 20},
+                    "c2005": {"ban_count": 1, "eligible_count": 20},
+                },
+            },
+        }
+
+        formula_only = fbr.recommend_final_bans(
+            ally,
+            enemy,
+            top_k=4,
+            final_ban_stats={"has_labeled_decisions": False},
+        )
+        hybrid = fbr.recommend_final_bans(
+            ally,
+            enemy,
+            top_k=4,
+            warfare_rules="Defense",
+            final_ban_stats=artifact,
+        )
+
+        self.assertEqual(formula_only["handled_by"], "final_ban_stats_v1")
+        self.assertEqual(hybrid["handled_by"], "final_ban_hybrid_v2")
+        self.assertEqual(hybrid["recommendations"][0]["hero"], "c2001")
+        top = hybrid["recommendations"][0]
+        self.assertGreater(top["historical_weight"], 0.0)
+        self.assertIn("formula_score", top)
+        self.assertIn("historical_ban_rate", top)
+
+    def test_missing_artifact_keeps_formula_fallback(self) -> None:
+        ally, enemy = _sample_draft()
+        with mock.patch.object(fbr, "load_final_ban_stats_artifact", return_value=None):
+            fbr.reset_cached_stats()
+            result = fbr.recommend_final_bans(ally, enemy, top_k=3)
+        self.assertEqual(result["handled_by"], "final_ban_stats_v1")
+        for item in result["recommendations"]:
+            self.assertEqual(item["historical_weight"], 0.0)
+            self.assertIsNone(item["historical_context_level"])
 
 
 if __name__ == "__main__":
