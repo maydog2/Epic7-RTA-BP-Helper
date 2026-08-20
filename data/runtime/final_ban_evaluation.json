@@ -1,8 +1,8 @@
 {
   "raw_path": "C:\\Users\\wuyuh\\PycharmProjects\\AI Projects\\E7_BP_Helper\\data\\epic7_match_history_raw.jsonl",
-  "labeled_match_count": 5563,
-  "train_match_count": 4450,
-  "test_match_count": 1113,
+  "labeled_match_count": 7263,
+  "train_match_count": 5810,
+  "test_match_count": 1453,
   "split_method": "played_at_or_match_id",
   "insufficient_data": false,
   "selected_hybrid_config": {
@@ -11,23 +11,23 @@
     "max_history_weight": 0.7
   },
   "metrics": {
-    "evaluated_decisions": 1113,
+    "evaluated_decisions": 1453,
     "formula": {
-      "top1_accuracy": 0.3755615453728661,
-      "mrr": 0.6185235100329443,
-      "ndcg_at_4": 0.7145870377163023
+      "top1_accuracy": 0.3620096352374398,
+      "mrr": 0.6114361091993605,
+      "ndcg_at_4": 0.7093406608160827
     },
     "hybrid": {
-      "top1_accuracy": 0.4941599281221923,
-      "mrr": 0.6925726265348918,
-      "ndcg_at_4": 0.7700043322919998
+      "top1_accuracy": 0.5519614590502409,
+      "mrr": 0.7322206928194555,
+      "ndcg_at_4": 0.7999387233827804
     },
     "context_level_hits": {
-      "actor_rule_bucket_hero": 3827,
-      "actor_bucket_hero": 602,
-      "actor_hero": 8,
-      "hero_global": 5
+      "actor_rule_bucket_hero": 5647,
+      "actor_bucket_hero": 148,
+      "hero_global": 2,
+      "actor_hero": 9
     },
-    "train_decision_count": 8900
+    "train_decision_count": 11620
   }
 }
