@@ -1,0 +1,70 @@
+[
+  {
+    "id": "preban_ally_source",
+    "endpoint": "preban",
+    "params": {
+      "excluded_heroes": "",
+      "top_k": "5",
+      "preban_side": "user",
+      "first_pick_team": "My Team"
+    }
+  },
+  {
+    "id": "preban_enemy_source",
+    "endpoint": "preban",
+    "params": {
+      "excluded_heroes": "",
+      "top_k": "5",
+      "preban_side": "enemy",
+      "first_pick_team": "Enemy Team"
+    }
+  },
+  {
+    "id": "first_pick_ally_turn",
+    "endpoint": "recommend",
+    "params": {
+      "user_picks": "",
+      "enemy_picks": "",
+      "ally_preban": "c1168,c2124",
+      "enemy_preban": "c2124,c1168",
+      "first_pick_team": "My Team",
+      "warfare_rules": "ANY"
+    }
+  },
+  {
+    "id": "first_pick_enemy_turn",
+    "endpoint": "recommend",
+    "params": {
+      "user_picks": "",
+      "enemy_picks": "",
+      "ally_preban": "c1168",
+      "enemy_preban": "c2124",
+      "first_pick_team": "Enemy Team",
+      "warfare_rules": "ANY"
+    }
+  },
+  {
+    "id": "normal_pick_rerank",
+    "endpoint": "recommend",
+    "params": {
+      "user_picks": "c1168",
+      "enemy_picks": "c2124,c5110",
+      "ally_preban": "",
+      "enemy_preban": "",
+      "first_pick_team": "My Team",
+      "warfare_rules": "ANY"
+    }
+  },
+  {
+    "id": "final_ban_after_ten_picks",
+    "endpoint": "recommend",
+    "params": {
+      "user_picks": "c1168,c2124,c5110,c6051,c6071",
+      "enemy_picks": "c6050,c6052,c6060,c6070,c6080",
+      "ally_preban": "c1001,c1002",
+      "enemy_preban": "c1003,c1004",
+      "first_pick_team": "My Team",
+      "warfare_rules": "ANY"
+    }
+  }
+]

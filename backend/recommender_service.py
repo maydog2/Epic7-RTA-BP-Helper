@@ -932,12 +932,24 @@ def status():
             "frontend_enabled": frontend_enabled(),
             "reranker_enabled": reranker_enabled(),
             "debug_recommendations_enabled": debug_recommendations_enabled(),
+            "windows_version": _windows_version(),
         }
     ), 200
 
 
 def frontend_enabled() -> bool:
     return FRONTEND_DIST_DIR.is_dir() and (FRONTEND_DIST_DIR / "index.html").is_file()
+
+
+def _windows_version() -> str | None:
+    try:
+        from .windows_patch import installed_version
+
+        version = installed_version(APP_BASE_DIR)
+    except Exception:
+        logging.exception("Could not read the Windows app version")
+        return None
+    return None if version is None else version.version
 
 
 @app.get("/")

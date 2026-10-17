@@ -103,7 +103,8 @@ def main() -> int:
         return 1
 
     app_url = f"http://127.0.0.1:{port}/"
-    webbrowser.open(app_url)
+    if os.environ.get("E7_BP_HELPER_NO_BROWSER", "").strip().lower() not in {"1", "true", "yes"}:
+        webbrowser.open(app_url)
 
     print("E7 BP Helper is running.")
     print(f"Open this address if your browser did not launch automatically: {app_url}")

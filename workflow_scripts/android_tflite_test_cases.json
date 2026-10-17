@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "description": "Fixed draft states for Android Phase 2 Keras vs TFLite parity checks. Cases avoid first-pick stats routing by ensuring the first-pick team already has at least one pick.",
+  "cases": [
+    {
+      "id": "ally_first_opening_pick",
+      "description": "My Team first; one ally pick at order 2.",
+      "user_picks": ["c1168"],
+      "enemy_picks": [],
+      "ally_preban": [],
+      "enemy_preban": [],
+      "first_pick_team": "My Team",
+      "warfare_rules": "ANY"
+    },
+    {
+      "id": "enemy_first_opening_pick",
+      "description": "Enemy Team first; one enemy pick at order 1.",
+      "user_picks": [],
+      "enemy_picks": ["c2124"],
+      "ally_preban": [],
+      "enemy_preban": [],
+      "first_pick_team": "Enemy Team",
+      "warfare_rules": "ANY"
+    },
+    {
+      "id": "mid_draft_with_prebans",
+      "description": "Three picks each side with both preban lists filled.",
+      "user_picks": ["c1168", "c1022", "c1007"],
+      "enemy_picks": ["c2124", "c2050", "c1103"],
+      "ally_preban": ["c6005", "c1153"],
+      "enemy_preban": ["c5154", "c2111"],
+      "first_pick_team": "My Team",
+      "warfare_rules": "ANY"
+    },
+    {
+      "id": "late_draft_order_8",
+      "description": "Late draft with four picks per side.",
+      "user_picks": ["c1168", "c1022", "c1007", "c1034"],
+      "enemy_picks": ["c2124", "c2050", "c1103", "c1019"],
+      "ally_preban": ["c6005"],
+      "enemy_preban": ["c5154"],
+      "first_pick_team": "My Team",
+      "warfare_rules": "Defense"
+    },
+    {
+      "id": "concrete_offense_rule",
+      "description": "Concrete Offense warfare rule at order 5.",
+      "user_picks": ["c1168", "c1022"],
+      "enemy_picks": ["c2124", "c2050"],
+      "ally_preban": [],
+      "enemy_preban": [],
+      "first_pick_team": "My Team",
+      "warfare_rules": "Offense"
+    },
+    {
+      "id": "concrete_defense_rule",
+      "description": "Concrete Defense warfare rule with prebans only.",
+      "user_picks": [],
+      "enemy_picks": ["c2124"],
+      "ally_preban": ["c6005", "c1153"],
+      "enemy_preban": ["c5154", "c2111"],
+      "first_pick_team": "Enemy Team",
+      "warfare_rules": "Defense"
+    },
+    {
+      "id": "concrete_resistance_rule",
+      "description": "Concrete Resistance warfare rule in a balanced mid-draft.",
+      "user_picks": ["c1007", "c1038", "c1042"],
+      "enemy_picks": ["c1103", "c1014"],
+      "ally_preban": ["c1020"],
+      "enemy_preban": ["c1023"],
+      "first_pick_team": "My Team",
+      "warfare_rules": "Resistance"
+    },
+    {
+      "id": "full_preban_any",
+      "description": "Both preban lists full before any picks.",
+      "user_picks": [],
+      "enemy_picks": ["c2124"],
+      "ally_preban": ["c6005", "c1153"],
+      "enemy_preban": ["c5154", "c2111"],
+      "first_pick_team": "Enemy Team",
+      "warfare_rules": "ANY"
+    }
+  ]
+}

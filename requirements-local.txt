@@ -1,0 +1,17 @@
+# Local-only tooling (scraping + Windows exe packaging).
+# Install after requirements-recommender.txt:
+#   pip install -r requirements-local.txt
+
+# --- Match/hero scraping ---
+beautifulsoup4==4.12.3
+numpy==1.26.4
+packaging==24.1
+pandas==2.2.2
+pillow==10.4.0
+requests==2.32.3
+selenium==4.24.0
+webdriver-manager==4.0.2
+zhconv==1.4.3
+
+# --- Windows exe packaging ---
+pyinstaller>=6.0.0

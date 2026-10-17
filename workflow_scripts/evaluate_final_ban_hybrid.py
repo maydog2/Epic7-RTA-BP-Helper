@@ -102,7 +102,6 @@ def _rank_target(
     use_hybrid: bool,
     hybrid_config: dict[str, float] | None = None,
 ) -> tuple[str | None, list[str]]:
-    reset_cached_stats()
     result = recommend_final_bans(
         payload["ally_picks"],
         payload["enemy_picks"],
@@ -141,6 +140,7 @@ def evaluate_split(
     *,
     hybrid_config: dict[str, float] | None = None,
 ) -> dict[str, Any]:
+    reset_cached_stats()
     artifact = build_final_ban_stats_from_matches(train_matches)
     if hybrid_config:
         artifact["hybrid_config"] = dict(hybrid_config)

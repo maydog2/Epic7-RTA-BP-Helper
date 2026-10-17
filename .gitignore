@@ -1,7 +1,7 @@
 # E7 BP Helper — GitHub 仓库用途：
 #   Vercel 部署 frontend/（静态站）
 #   Render 部署 Flask API + TensorFlow（render.yaml）
-# 不上传：本地 venv、exe 打包、爬虫/训练、个人笔记
+# 不上传：本地 venv、打包成品、爬虫进度、个人笔记
 
 # --- Python / local env ---
 .venv/
@@ -35,27 +35,26 @@ frontend/.env
 frontend/.env.local
 frontend/.env.*.local
 
-# --- Windows exe 打包（本地分发用，与 Vercel/Render 无关）---
+# --- Windows exe 打包产物（脚本和 spec 要上传；成品目录不上传）---
 build/
 dist/
-*.spec
-build_exe.ps1
-/launcher.py
 
-# --- Android 本地壳（不进 GitHub；资源由 export 脚本生成）---
-E7_BP_Helper_Android/
+# --- Android 打包产物（工程源码要上传；构建缓存、APK、本机 SDK 路径不上传）---
+E7_BP_Helper_Android/.gradle/
+E7_BP_Helper_Android/**/build/
+E7_BP_Helper_Android/local.properties
+E7_BP_Helper_Android/.idea/
+E7_BP_Helper_Android/**/*.iml
+E7_BP_Helper_Android/**/*.apk
 
-# --- 个人笔记 / 本地草稿 ---
+# --- 个人笔记 ---
 小本本.md
-README_SCRAPERS.md
 
-# --- 本地爬虫 / 打包依赖（Render 用 requirements-recommender.txt）---
-requirements-local.txt
-
-# --- data: 只保留线上推理所需 ---
+# --- data: 线上推理文件，另加比赛原始数据 ---
 data/debug/
 data/*.html
 data/*.jsonl
+!data/epic7_match_history_raw.jsonl
 data/epic7_scraper_state.json
 data/*_appearances.txt
 data/debug_*.json
@@ -70,7 +69,7 @@ data/transformer/*
 !data/transformer/rec_variables.pkl
 !data/transformer/training_report_position_warfare.json
 
-# --- workflow_scripts: 只保留后端 import 的 4 个模块 ---
+# --- workflow_scripts: 推理、补丁、Android 导出、爬虫和训练 ---
 workflow_scripts/*
 !workflow_scripts/
 !workflow_scripts/transformer_draft_data.py
@@ -80,14 +79,25 @@ workflow_scripts/*
 !workflow_scripts/final_ban_stats_core.py
 !workflow_scripts/generate_final_ban_stats.py
 !workflow_scripts/evaluate_final_ban_hybrid.py
-
-# 以下应被上一段 workflow_scripts/* 覆盖；单独列出便于阅读
-workflow_scripts/get_*.py
-workflow_scripts/generate_*.py
-!workflow_scripts/generate_final_ban_stats.py
-workflow_scripts/build_transformer_draft_dataset.py
-workflow_scripts/evaluate_draft_models.py
-workflow_scripts/update_hero_details_appearance_stats.py
-workflow_scripts/update_hero_names.py
-workflow_scripts/hero_details_*.py
-workflow_scripts/tf_requirements.txt
+!workflow_scripts/build_windows_patch.py
+!workflow_scripts/export_android_phase1_assets.py
+!workflow_scripts/export_android_phase3_assets.py
+!workflow_scripts/export_android_recommendation_artifacts.py
+!workflow_scripts/export_android_tflite.py
+!workflow_scripts/android_tflite_parity.py
+!workflow_scripts/android_tflite_test_cases.json
+!workflow_scripts/android_recommendation_parity.py
+!workflow_scripts/android_recommendation_parity_fixtures.json
+!workflow_scripts/get_matches.py
+!workflow_scripts/get_character_ids.py
+!workflow_scripts/get_hero_description.py
+!workflow_scripts/update_hero_names.py
+!workflow_scripts/hero_details_fields.py
+!workflow_scripts/hero_details_io.py
+!workflow_scripts/update_hero_details_appearance_stats.py
+!workflow_scripts/build_transformer_draft_dataset.py
+!workflow_scripts/get_rec_transformer_model.py
+!workflow_scripts/evaluate_draft_models.py
+!workflow_scripts/generate_response_stats.py
+!workflow_scripts/generate_synergy_stats.py
+!workflow_scripts/tf_requirements.txt
