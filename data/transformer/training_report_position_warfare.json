@@ -1,9 +1,9 @@
 {
   "device": "cpu",
   "weights_out": "C:\\Users\\wuyuh\\PycharmProjects\\AI Projects\\E7_BP_Helper\\data\\transformer\\rec_model_position_warfare.weights.h5",
-  "train_samples": 45765,
-  "validation_samples": 11439,
-  "parameters": 2009003,
+  "train_samples": 46170,
+  "validation_samples": 11538,
+  "parameters": 2007977,
   "config": {
     "epochs": 60,
     "batch_size": 64,
@@ -36,22 +36,22 @@
     "seed": 42
   },
   "monitor": "val_top_3_accuracy",
-  "best_epoch": 28,
-  "best_val_top_3_accuracy": 0.6058222055435181,
-  "best_val_top_5_accuracy": 0.7150974869728088,
-  "best_val_loss": 2.769597053527832,
+  "best_epoch": 25,
+  "best_val_top_3_accuracy": 0.618738055229187,
+  "best_val_top_5_accuracy": 0.732102632522583,
+  "best_val_loss": 2.6581332683563232,
   "final_metrics": {
-    "loss": 1.0778021812438965,
-    "accuracy": 0.6649841666221619,
-    "top_3_accuracy": 0.8701627850532532,
-    "top_5_accuracy": 0.9341418147087097,
-    "top_10_accuracy": 0.9833497405052185,
-    "val_loss": 2.8428847789764404,
-    "val_accuracy": 0.368388831615448,
-    "val_top_3_accuracy": 0.6018882989883423,
-    "val_top_5_accuracy": 0.7131742238998413,
-    "val_top_10_accuracy": 0.8406329154968262,
-    "lr": 9.999999747378752e-06
+    "loss": 1.0379674434661865,
+    "accuracy": 0.6714100241661072,
+    "top_3_accuracy": 0.8836473822593689,
+    "top_5_accuracy": 0.9434264898300171,
+    "top_10_accuracy": 0.9873294234275818,
+    "val_loss": 2.805081844329834,
+    "val_accuracy": 0.37666839361190796,
+    "val_top_3_accuracy": 0.6154446005821228,
+    "val_top_5_accuracy": 0.7301092147827148,
+    "val_top_10_accuracy": 0.8572542667388916,
+    "lr": 1.5625000742147677e-05
   },
-  "elapsed_seconds": 1167.8352119922638
+  "elapsed_seconds": 1301.8032367229462
 }
